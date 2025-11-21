@@ -7,16 +7,17 @@ dotenv.config();
 connectDB();
 
 const app = express();
-
 app.use(express.json());
 app.use(cors());
 
-// AUTH ROUTES HERE
+// AUTH ROUTES
 app.use("/api/auth", require("./routes/authRoutes"));
 
-// Test route
+// RESUME ROUTES
+app.use("/api/resume", require("./routes/resumeRoutes"));
+
 app.get("/", (req, res) => {
-  res.json({ message: "CareerNexus API is running" });
+  res.json({ message: "CareerNexus API Running" });
 });
 
 const PORT = process.env.PORT || 5000;

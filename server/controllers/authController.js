@@ -2,6 +2,7 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+// REGISTER
 exports.register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -20,6 +21,7 @@ exports.register = async (req, res) => {
   }
 };
 
+// LOGIN
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -41,6 +43,22 @@ exports.login = async (req, res) => {
     res.json({ message: "Login success", token, user });
   } catch (error) {
     console.log("LOGIN ERROR:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// GET LOGGED-IN USER
+exports.me = async (req, res) => {
+  try {
+    const user = await User.findById(req.user).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.log("ME ERROR:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
