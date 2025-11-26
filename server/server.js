@@ -2,38 +2,61 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
-const matchRoutes = require("./routes/matchRoutes");
-const tailoredRoutes = require("./routes/tailoredRoutes");
-
 
 dotenv.config();
 connectDB();
 
 const app = express();
-app.use(express.json());
-app.use(cors());
 
-// AUTH ROUTES
+// -----------------------------------------------------------------------------
+// CORS (Google Popup + Vercel + Local Dev)
+// -----------------------------------------------------------------------------
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",          // Local Vite frontend
+      process.env.FRONTEND_URL || "",   // Production frontend (Vercel)
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
+
+// JSON parser
+app.use(express.json());
+
+// -----------------------------------------------------------------------------
+// ROUTES
+// -----------------------------------------------------------------------------
+
+// AUTH (Google login + /me)
 app.use("/api/auth", require("./routes/authRoutes"));
 
-// RESUME ROUTES
+// Resume Analyzer
 app.use("/api/resume", require("./routes/resumeRoutes"));
 
-// JD ROUTES
+// Job Description Analyzer
 app.use("/api/jd", require("./routes/jdRoutes"));
 
-// MOCK INTERVIEW ROUTE
+// Mock Interview
 app.use("/api/interview", require("./routes/interviewRoutes"));
 
-// MATCH ROUTES
-app.use("/api/match", matchRoutes);
+// Job Match Engine
+app.use("/api/match", require("./routes/matchRoutes"));
 
-// TAILOR ROUTES
-app.use("/api/tailor", tailoredRoutes);
+// Tailored Resume
+app.use("/api/tailor", require("./routes/tailoredRoutes"));
 
+// -----------------------------------------------------------------------------
+// HEALTH CHECK ROUTE
+// -----------------------------------------------------------------------------
 app.get("/", (req, res) => {
-  res.json({ message: "CareerNexus API Running" });
+  res.json({ message: "CareerNexus API Running 🚀" });
 });
 
+// -----------------------------------------------------------------------------
+// START SERVER
+// -----------------------------------------------------------------------------
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

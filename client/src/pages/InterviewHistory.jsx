@@ -8,24 +8,20 @@ export default function InterviewHistory() {
   const [selected, setSelected] = useState(null);
   const [parsedEvaluation, setParsedEvaluation] = useState(null);
 
-  // ✅ for auto scroll
   const resultRef = useRef(null);
 
   useEffect(() => {
     const fetchHistory = async () => {
       try {
         const token = localStorage.getItem("token");
-
         const res = await axios.get(`${API_URL}/interview/history`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         setHistory(res.data.history);
       } catch (err) {
         console.error(err);
-        alert("Failed to load interview history");
+        alert("Failed to load interview history.");
       } finally {
         setLoading(false);
       }
@@ -34,36 +30,28 @@ export default function InterviewHistory() {
     fetchHistory();
   }, []);
 
-  // ✅ same parsing behavior as MockInterview
-  const normalizeCodeBlocks = (content) => {
-    return content.replace(/```(\w+)?\s*([\s\S]*?)```/g, (match, lang, code) => {
-      const language = lang ? lang.trim() : "Code";
+  // ---- Normalizer ----
+  const normalize = (content) =>
+    content.replace(/```(\w+)?\s*([\s\S]*?)```/g, (_, lang, code) => {
+      const language = lang || "Code";
       return `\n${language}:\n${code.trim()}\n`;
     });
-  };
 
   const parseEvaluation = (text) => {
-    if (!text) {
-      return { sections: [], summary: "No evaluation available" };
-    }
-
     const parts = text.split(/Q\d+/).slice(1);
 
     const sections = parts.map((part, index) => {
-      const cleaned = part
-        .replace(/Overall Summary[\s\S]*/i, "") // remove summary from last block
-        .trim();
-
+      const cleaned = part.replace(/Overall Summary[\s\S]*/i, "").trim();
       return {
         title: `Question ${index + 1}`,
-        content: normalizeCodeBlocks(cleaned),
+        content: normalize(cleaned),
         open: false,
       };
     });
 
-    const summaryMatch = text.match(/Overall Summary[\s\S]*/i);
-    const summary = summaryMatch
-      ? normalizeCodeBlocks(summaryMatch[0])
+    const summaryBlock = text.match(/Overall Summary[\s\S]*/i);
+    const summary = summaryBlock
+      ? normalize(summaryBlock[0])
       : "Summary unavailable";
 
     return { sections, summary };
@@ -71,62 +59,53 @@ export default function InterviewHistory() {
 
   const handleSelect = (item) => {
     setSelected(item);
-    const parsed = parseEvaluation(item.evaluationText);
-    setParsedEvaluation(parsed);
+    setParsedEvaluation(parseEvaluation(item.evaluationText));
 
-    // ✅ auto scroll into view
     setTimeout(() => {
-      if (resultRef.current) {
-        resultRef.current.scrollIntoView({ behavior: "smooth" });
-      }
+      resultRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 200);
   };
 
-  const toggleSection = (index) => {
-    if (!parsedEvaluation) return;
+  const toggle = (i) => {
     setParsedEvaluation((prev) => ({
       ...prev,
-      sections: prev.sections.map((sec, i) =>
-        i === index ? { ...sec, open: !sec.open } : sec
+      sections: prev.sections.map((sec, idx) =>
+        idx === i ? { ...sec, open: !sec.open } : sec
       ),
     }));
   };
 
-  if (loading) {
+  if (loading)
     return <p style={{ padding: "20px" }}>Loading...</p>;
-  }
 
   return (
     <div style={{ padding: "20px" }}>
       <h2>Interview History</h2>
 
       {history.length === 0 ? (
-        <p>No interview history found.</p>
+        <p>No history found.</p>
       ) : (
-        <ul style={{ marginBottom: "20px" }}>
+        <ul>
           {history.map((item) => (
             <li
               key={item._id}
               style={{
-                margin: "8px 0",
+                margin: "10px 0",
                 cursor: "pointer",
-                color: selected && selected._id === item._id ? "darkblue" : "blue",
                 textDecoration: "underline",
+                color: selected?._id === item._id ? "darkblue" : "blue"
               }}
               onClick={() => handleSelect(item)}
             >
-              🎤 {item.role} — {item.difficulty.toUpperCase()} — Score: {item.score}/100 —{" "}
-              {new Date(item.createdAt).toLocaleString()}
+              🎤 {item.role} — {item.difficulty.toUpperCase()} —
+              Score: {item.score}/100 — {new Date(item.createdAt).toLocaleString()}
             </li>
           ))}
         </ul>
       )}
 
       {selected && parsedEvaluation && (
-        <div
-          ref={resultRef}
-          style={{ marginTop: "20px", whiteSpace: "pre-wrap" }}
-        >
+        <div ref={resultRef} style={{ marginTop: "20px", whiteSpace: "pre-wrap" }}>
           <h3>Interview Details</h3>
           <p><strong>Role:</strong> {selected.role}</p>
           <p><strong>Difficulty:</strong> {selected.difficulty}</p>
@@ -135,43 +114,40 @@ export default function InterviewHistory() {
 
           <h3 style={{ marginTop: "20px" }}>Per Question Feedback</h3>
 
-          {parsedEvaluation.sections.map((section, index) => (
-            <div key={index} style={{ marginBottom: "12px" }}>
+          {parsedEvaluation.sections.map((sec, i) => (
+            <div key={i} style={{ marginBottom: "15px" }}>
               <div
-                onClick={() => toggleSection(index)}
+                onClick={() => toggle(i)}
                 style={{
-                  cursor: "pointer",
-                  fontWeight: "bold",
                   padding: "6px",
+                  cursor: "pointer",
                   background: "#eee",
+                  fontWeight: "bold"
                 }}
               >
-                {section.title} {section.open ? "▲" : "▼"}
+                {sec.title} {sec.open ? "▲" : "▼"}
               </div>
 
-              {section.open && (
+              {sec.open && (
                 <div
                   style={{
-                    padding: "8px",
-                    border: "1px solid #ddd",
-                    borderTop: "none",
-                    background: "white",
-                    whiteSpace: "pre-wrap",
+                    padding: "12px",
+                    border: "1px solid #ccc",
+                    background: "white"
                   }}
                 >
-                  {section.content}
+                  {sec.content}
                 </div>
               )}
             </div>
           ))}
 
-          <h3 style={{ marginTop: "20px" }}>Overall Summary</h3>
+          <h3>Overall Summary</h3>
           <div
             style={{
-              padding: "12px 16px",
+              padding: "12px",
               border: "1px solid #ccc",
-              background: "#fafafa",
-              whiteSpace: "pre-wrap",
+              background: "#fafafa"
             }}
           >
             {parsedEvaluation.summary}

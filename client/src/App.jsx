@@ -1,41 +1,38 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
-import Register from "./pages/Register";
-import Login from "./pages/Login";
+/* Pages */
+import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
-import ProtectedRoute from "./components/ProtectedRoute";
-import Navbar from "./components/Navbar";
-import Home from "./pages/Home";
-
 import ResumeAnalyzer from "./pages/ResumeAnalyzer";
 import ResumeHistory from "./pages/ResumeHistory";
-
 import JDAnalyzer from "./pages/JDAnalyzer";
 import JDHistory from "./pages/JDHistory";
-
 import MockInterview from "./pages/MockInterview";
 import InterviewHistory from "./pages/InterviewHistory";
-
 import MatchEngine from "./pages/MatchEngine";
 import MatchHistory from "./pages/MatchHistory";
-
 import TailoredResume from "./pages/TailoredResume";
 import TailoredHistory from "./pages/TailoredHistory";
 
+/* Components */
+import Navbar from "./components/Navbar";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
+  const location = useLocation();
+
+  // 🧹 Cleanup: No login/register pages anymore → navbar always visible
+  const hideNavbar = false;
+
   return (
     <>
-      <Navbar />
+      {!hideNavbar && <Navbar />}
 
       <Routes>
+        {/* Landing Page - Public */}
+        <Route path="/" element={<Landing />} />
 
-        {/* Public Routes */}
-        <Route path="/" element={<Home />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
-
-        {/* Protected Routes */}
+        {/* PROTECTED ROUTES */}
         <Route
           path="/dashboard"
           element={
@@ -45,7 +42,6 @@ function App() {
           }
         />
 
-        {/* Resume */}
         <Route
           path="/resume"
           element={
@@ -63,7 +59,6 @@ function App() {
           }
         />
 
-        {/* Job Description */}
         <Route
           path="/jd"
           element={
@@ -81,7 +76,6 @@ function App() {
           }
         />
 
-        {/* Mock Interview */}
         <Route
           path="/interview"
           element={
@@ -99,7 +93,6 @@ function App() {
           }
         />
 
-        {/* Match Engine */}
         <Route
           path="/match-engine"
           element={
@@ -117,7 +110,6 @@ function App() {
           }
         />
 
-        {/* Tailored Resume */}
         <Route
           path="/tailored-resume"
           element={
@@ -134,6 +126,9 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Catch-all redirect */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </>
   );

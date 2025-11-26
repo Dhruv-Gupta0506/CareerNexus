@@ -1,62 +1,113 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
-  const token = localStorage.getItem("token");
+  const { token, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    window.location.href = "/login";
+  // Navbar always visible → removed hide logic
+
+  const smoothScroll = (id) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleNavClick = (section) => {
+    if (location.pathname !== "/") {
+      navigate("/");
+      setTimeout(() => smoothScroll(section), 200);
+    } else {
+      smoothScroll(section);
+    }
+  };
+
+  const goToTop = () => {
+    if (location.pathname !== "/") {
+      navigate("/");
+      setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 200);
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   return (
-    <div
-      style={{
-        padding: "15px",
-        borderBottom: "1px solid #ddd",
-        marginBottom: "20px",
-      }}
+    <nav
+      className="
+        w-full fixed top-0 left-0 z-50
+        bg-[#eef1ff]/85 backdrop-blur-xl
+        shadow-[0_3px_12px_rgba(0,0,0,0.03)]
+      "
     >
-      {/* Always visible */}
-      <Link to="/" style={{ marginRight: "20px" }}>Home</Link>
+      <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
 
-      {/* When NOT logged in */}
-      {!token && (
-        <>
-          <Link to="/login" style={{ marginRight: "20px" }}>Login</Link>
-          <Link to="/register">Register</Link>
-        </>
-      )}
+        {/* LOGO */}
+        <button
+          onClick={goToTop}
+          className="
+            text-xl sm:text-2xl font-bold tracking-tight
+            text-indigo-600 hover:text-indigo-700
+            transition-all duration-200 hover:scale-110
+          "
+        >
+          Career Nexus
+        </button>
 
-      {/* When logged in */}
-      {token && (
-        <>
-          <Link to="/dashboard" style={{ marginRight: "20px" }}>Dashboard</Link>
-          <Link to="/resume" style={{ marginRight: "20px" }}>Resume Analyzer</Link>
-          <Link to="/history" style={{ marginRight: "20px" }}>Resume History</Link>
-          <Link to="/jd" style={{ marginRight: "20px" }}>JD Analyzer</Link>
-          <Link to="/jd-history" style={{ marginRight: "20px" }}>JD History</Link>
-          <Link to="/match-engine" style={{ marginRight: "20px" }}>Match Engine</Link>
-          <Link to="/match-history" style={{ marginRight: "20px" }}>Match history</Link>
-          <Link to="/tailored-resume" style={{ marginRight: "20px" }}>Tailored Resume</Link>
-          <Link to="/tailored-history" style={{ marginRight: "20px" }}>Tailored History</Link>
-          <Link to="/interview" style={{ marginRight: "20px" }}>Mock Interview</Link>
-          <Link to="/interview-history" style={{ marginRight: "20px" }}>Interview History</Link>
+        {/* NAV OPTIONS */}
+        {!token ? (
+          <div className="flex items-center space-x-6 sm:space-x-10">
 
+            <button
+              onClick={() => handleNavClick("features")}
+              className="
+                text-base sm:text-lg font-medium text-gray-700
+                hover:text-indigo-600
+                transition-all duration-200 hover:scale-110
+              "
+            >
+              Features
+            </button>
 
-          <button
-            onClick={handleLogout}
-            style={{
-              cursor: "pointer",
-              background: "none",
-              border: "none",
-              color: "red",
-              fontWeight: "bold",
-            }}
-          >
-            Logout
-          </button>
-        </>
-      )}
-    </div>
+            <button
+              onClick={() => handleNavClick("faq")}
+              className="
+                text-base sm:text-lg font-medium text-gray-700
+                hover:text-indigo-600
+                transition-all duration-200 hover:scale-110
+              "
+            >
+              FAQ
+            </button>
+
+          </div>
+        ) : (
+          <div className="flex items-center space-x-6 sm:space-x-10">
+            <Link
+              to="/dashboard"
+              className="
+                text-base sm:text-lg font-medium text-gray-700
+                hover:text-indigo-600
+                transition-all duration-200 hover:scale-110
+              "
+            >
+              Dashboard
+            </Link>
+
+            <button
+              onClick={logout}
+              className="
+                px-4 py-2 sm:px-5 sm:py-2.5 border border-red-500 text-red-500
+                rounded-xl hover:bg-red-500 hover:text-white
+                text-base sm:text-lg font-medium
+                transition-all duration-200 hover:scale-110
+              "
+            >
+              Logout
+            </button>
+          </div>
+        )}
+
+      </div>
+    </nav>
   );
 }

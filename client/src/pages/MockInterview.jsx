@@ -6,30 +6,33 @@ export default function MockInterview() {
   const [role, setRole] = useState("");
   const [difficulty, setDifficulty] = useState("easy");
   const [questionCount, setQuestionCount] = useState(1);
+
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [parsedEvaluation, setParsedEvaluation] = useState(null);
   const [score, setScore] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // ✅ Ref for auto-scroll
   const resultRef = useRef(null);
 
-  const cleanQuestion = (q) =>
-    q.replace(/^\s*\d+[\).\:-]?\s*/gm, "").trim();
+  // Remove numbering "1. " etc.
+  const clean = (q) => q.replace(/^\s*\d+[\).\:-]?\s*/g, "").trim();
 
+  // ------------------------------------------
+  // GENERATE QUESTIONS
+  // ------------------------------------------
   const generateQuestions = async () => {
     if (!role.trim()) {
-      alert("Please enter a role first.");
+      alert("Please enter a role.");
       return;
     }
 
     try {
       setLoading(true);
       setQuestions([]);
+      setAnswers({});
       setParsedEvaluation(null);
       setScore(null);
-      setAnswers({});
 
       const token = localStorage.getItem("token");
 
@@ -40,8 +43,8 @@ export default function MockInterview() {
       );
 
       const cleaned = res.data.questions
-        .map((q) => cleanQuestion(q))
-        .filter((q) => q.length > 3)
+        .map((q) => clean(q))
+        .filter((q) => q.length > 2)
         .slice(0, questionCount);
 
       setQuestions(cleaned);
@@ -53,6 +56,9 @@ export default function MockInterview() {
     }
   };
 
+  // ------------------------------------------
+  // EVALUATE INTERVIEW
+  // ------------------------------------------
   const evaluateInterview = async () => {
     if (Object.keys(answers).length !== questions.length) {
       alert("Please answer all questions before submitting.");
@@ -79,13 +85,9 @@ export default function MockInterview() {
       const parsed = parseEvaluation(res.data.evaluation);
       setParsedEvaluation(parsed);
 
-      // ✅ Auto-scroll AFTER state updates
       setTimeout(() => {
-        if (resultRef.current) {
-          resultRef.current.scrollIntoView({ behavior: "smooth" });
-        }
-      }, 300);
-
+        resultRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 250);
     } catch (err) {
       console.error(err);
       alert("Failed to evaluate interview.");
@@ -94,10 +96,12 @@ export default function MockInterview() {
     }
   };
 
-  // ✅ Convert code segments without styling, with language label
-  const normalizeCodeBlocks = (content) => {
-    return content.replace(/```(\w+)?\s*([\s\S]*?)```/g, (match, lang, code) => {
-      const language = lang ? lang.trim() : "Code";
+  // ------------------------------------------
+  // PARSE EVALUATION
+  // ------------------------------------------
+  const normalize = (content) => {
+    return content.replace(/```(\w+)?\s*([\s\S]*?)```/g, (_, lang, code) => {
+      const language = lang || "Code";
       return `\n${language}:\n${code.trim()}\n`;
     });
   };
@@ -105,31 +109,27 @@ export default function MockInterview() {
   const parseEvaluation = (text) => {
     const parts = text.split(/Q\d+/).slice(1);
 
-    const sections = parts.map((part, index) => {
-      const cleaned = part
-        .replace(/Overall Summary[\s\S]*/i, "")
-        .trim();
+    const sections = parts.map((block, idx) => {
+      const cleaned = block.replace(/Overall Summary[\s\S]*/i, "").trim();
 
       return {
-        title: `Question ${index + 1}`,
-        content: normalizeCodeBlocks(cleaned),
+        title: `Question ${idx + 1}`,
+        content: normalize(cleaned),
         open: false,
       };
     });
 
-    const summaryMatch = text.match(/Overall Summary[\s\S]*/i);
-    const summary = summaryMatch
-      ? normalizeCodeBlocks(summaryMatch[0])
-      : "Summary unavailable";
+    const summaryBlock = text.match(/Overall Summary[\s\S]*/i);
+    const summary = summaryBlock ? normalize(summaryBlock[0]) : "Summary unavailable";
 
     return { sections, summary };
   };
 
-  const toggleSection = (index) => {
+  const toggle = (i) => {
     setParsedEvaluation((prev) => ({
       ...prev,
-      sections: prev.sections.map((sec, i) =>
-        i === index ? { ...sec, open: !sec.open } : sec
+      sections: prev.sections.map((sec, idx) =>
+        idx === i ? { ...sec, open: !sec.open } : sec
       ),
     }));
   };
@@ -141,10 +141,9 @@ export default function MockInterview() {
       <div style={{ marginBottom: "15px" }}>
         <label>Role:</label><br />
         <input
-          type="text"
           value={role}
           onChange={(e) => setRole(e.target.value)}
-          placeholder="e.g. Software Engineer Intern"
+          placeholder="e.g. Frontend Developer, Backend Developer, SDE1, Java Developer"
           style={{ padding: "8px", width: "300px" }}
         />
       </div>
@@ -156,8 +155,8 @@ export default function MockInterview() {
           onChange={(e) => setQuestionCount(Number(e.target.value))}
           style={{ padding: "8px", width: "200px" }}
         >
-          {[1, 2, 3, 4, 5].map((num) => (
-            <option key={num} value={num}>{num}</option>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <option key={n} value={n}>{n}</option>
           ))}
         </select>
       </div>
@@ -180,10 +179,10 @@ export default function MockInterview() {
         disabled={loading}
         style={{
           padding: "10px 20px",
-          background: loading ? "gray" : "black",
+          background: loading ? "#999" : "#000",
           color: "white",
-          border: "none",
           cursor: "pointer",
+          border: "none"
         }}
       >
         {loading ? "Generating..." : "Generate Questions"}
@@ -193,24 +192,20 @@ export default function MockInterview() {
         <div style={{ marginTop: "25px" }}>
           <h3>Interview Questions</h3>
 
-          {questions.map((q, index) => (
-            <div key={index} style={{ marginBottom: "25px" }}>
-              <p style={{ fontWeight: "bold", marginBottom: "8px" }}>
-                {index + 1}. {q}
+          {questions.map((q, i) => (
+            <div key={i} style={{ marginBottom: "25px" }}>
+              <p style={{ fontWeight: "bold" }}>
+                {i + 1}. {q}
               </p>
 
               <textarea
                 rows={4}
-                placeholder="Write your answer here..."
-                value={answers[index] || ""}
+                style={{ width: "100%", maxWidth: "600px", padding: "10px" }}
+                placeholder="Write your answer..."
+                value={answers[i] || ""}
                 onChange={(e) =>
-                  setAnswers({ ...answers, [index]: e.target.value })
+                  setAnswers({ ...answers, [i]: e.target.value })
                 }
-                style={{
-                  width: "100%",
-                  maxWidth: "600px",
-                  padding: "10px",
-                }}
               />
             </div>
           ))}
@@ -220,51 +215,45 @@ export default function MockInterview() {
             disabled={loading}
             style={{
               padding: "10px 20px",
-              background: loading ? "gray" : "darkred",
+              background: loading ? "#999" : "darkred",
               color: "white",
-              border: "none",
               cursor: "pointer",
-              marginTop: "10px",
+              border: "none"
             }}
           >
-            {loading ? "Evaluating..." : "Submit Answers for Evaluation"}
+            {loading ? "Evaluating..." : "Submit for Evaluation"}
           </button>
         </div>
       )}
 
       {parsedEvaluation && (
-        <div
-          ref={resultRef}
-          style={{ marginTop: "30px", whiteSpace: "pre-wrap" }}
-        >
+        <div ref={resultRef} style={{ marginTop: "30px", whiteSpace: "pre-wrap" }}>
           <h3>Evaluation Result</h3>
           <p><strong>Score:</strong> {score}/100</p>
 
-          {parsedEvaluation.sections.map((section, index) => (
-            <div key={index} style={{ marginBottom: "12px" }}>
+          {parsedEvaluation.sections.map((sec, i) => (
+            <div key={i} style={{ marginBottom: "12px" }}>
               <div
-                onClick={() => toggleSection(index)}
+                onClick={() => toggle(i)}
                 style={{
                   cursor: "pointer",
-                  fontWeight: "bold",
                   padding: "6px",
                   background: "#eee",
+                  fontWeight: "bold"
                 }}
               >
-                {section.title} {section.open ? "▲" : "▼"}
+                {sec.title} {sec.open ? "▲" : "▼"}
               </div>
 
-              {section.open && (
+              {sec.open && (
                 <div
                   style={{
-                    padding: "12px 16px",
-                    border: "1px solid #ddd",
-                    borderTop: "none",
-                    background: "white",
-                    whiteSpace: "pre-wrap",
+                    padding: "12px",
+                    border: "1px solid #ccc",
+                    background: "white"
                   }}
                 >
-                  {section.content}
+                  {sec.content}
                 </div>
               )}
             </div>
@@ -273,10 +262,9 @@ export default function MockInterview() {
           <h3>Overall Summary</h3>
           <div
             style={{
-              padding: "12px 16px",
+              padding: "12px",
               border: "1px solid #ccc",
-              background: "#fafafa",
-              whiteSpace: "pre-wrap",
+              background: "#fafafa"
             }}
           >
             {parsedEvaluation.summary}
