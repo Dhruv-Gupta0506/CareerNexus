@@ -1,9 +1,12 @@
 import { useEffect } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 export default function Landing() {
+  const navigate = useNavigate(); // <-- FIX ADDED
+
   // ================================
-  // 1) Reveal animations (unchanged)
+  // 1) Reveal animations
   // ================================
   useEffect(() => {
     const elements = document.querySelectorAll(".reveal");
@@ -19,27 +22,39 @@ export default function Landing() {
   }, []);
 
   // ================================
-  // 2) GOOGLE LOGIN (NEW GIS POPUP)
+  // 2) GOOGLE LOGIN INITIALIZATION
   // ================================
-  const handleGoogleLogin = () => {
-    google.accounts.oauth2.initTokenClient({
+  useEffect(() => {
+    google.accounts.id.initialize({
       client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      scope: "email profile openid",
-      callback: async (response) => {
-        try {
-          // Send the access_token to backend
-          const { data } = await axios.post(
-            "http://localhost:5000/api/auth/google",
-            { access_token: response.access_token }
-          );
+      callback: handleGoogleResponse,
+    });
+  }, []);
 
-          localStorage.setItem("token", data.token);
-          window.location.href = "/dashboard";
-        } catch (error) {
-          console.error("❌ Google Login Error:", error);
-        }
-      },
-    }).requestAccessToken();
+  // ================================
+  // 3) GOOGLE POPUP TRIGGER
+  // ================================
+  const loginWithGoogle = () => google.accounts.id.prompt();
+
+  // ================================
+  // 4) HANDLE GOOGLE RESPONSE
+  // ================================
+  const handleGoogleResponse = async (response) => {
+    try {
+      const { data } = await axios.post(
+        "http://localhost:5000/api/auth/google",
+        { credential: response.credential }
+      );
+
+      localStorage.setItem("token", data.token);
+
+      // ❌ window.location.href = "/dashboard"
+      // ✅ FIX:
+      navigate("/dashboard");
+
+    } catch (error) {
+      console.error("Google Login Error:", error);
+    }
   };
 
   return (
@@ -62,19 +77,20 @@ export default function Landing() {
         }
       `}</style>
 
-      {/* HERO */}
+      {/* HERO ================================ */}
       <section
         id="hero"
         className="
-          min-h-[92vh]
-          flex flex-col items-center justify-center text-center px-6
-          fade-center reveal pt-48
+          min-h-[85vh]
+          flex flex-col items-center justify-center text-center px-4 sm:px-6
+          fade-center reveal pt-40 sm:pt-48
         "
       >
         <h1
           className="
-            text-[2.6rem] sm:text-[3.5rem] md:text-[5rem] lg:text-[6rem]
-            font-extrabold leading-[1.05] tracking-tight text-gray-900
+            text-[2rem] sm:text-[2.8rem] md:text-[4rem] lg:text-[5rem]
+            font-extrabold leading-[1.1] tracking-tight text-gray-900
+            max-w-4xl
           "
         >
           AI Career Assistant <br />
@@ -83,22 +99,23 @@ export default function Landing() {
           </span>
         </h1>
 
-        <p className="mt-8 text-lg sm:text-xl md:text-2xl text-gray-600 max-w-3xl leading-relaxed">
+        <p className="mt-6 text-base sm:text-lg md:text-xl lg:text-2xl text-gray-600 max-w-2xl leading-relaxed">
           Improve your resume, analyze job descriptions, and practice mock interviews —
           all powered by AI to help students and job seekers grow faster.
         </p>
 
-        {/* GOOGLE LOGIN BUTTON */}
+        {/* CTA BUTTON */}
         <button
-          onClick={handleGoogleLogin}
+          onClick={loginWithGoogle}
           className="
-            mt-10 px-10 py-4 sm:px-12 sm:py-5 
-            bg-indigo-600 text-white text-xl sm:text-2xl
-            rounded-2xl shadow-lg hover:shadow-2xl 
-            hover:bg-indigo-700 transition
+            mt-10 px-6 sm:px-8 py-3 sm:py-3.5
+            bg-gradient-to-r from-indigo-600 to-purple-600
+            text-white rounded-xl text-base sm:text-lg font-semibold
+            shadow-lg hover:shadow-xl hover:scale-[1.03]
+            transition-all duration-300
           "
         >
-          Get Started
+          Try Career Nexus
         </button>
       </section>
 
@@ -151,8 +168,10 @@ export default function Landing() {
       />
 
       {/* FAQ */}
-      <section id="faq" className="px-6 py-28 fade-center reveal">
-        <h2 className="text-4xl md:text-5xl font-bold text-center mb-14">FAQ</h2>
+      <section id="faq" className="px-4 sm:px-6 py-20 sm:py-28 fade-center reveal">
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-10 sm:mb-14">
+          FAQ
+        </h2>
 
         <FAQ q="Is this really free?" a="Yes — fully free for students and educational use." />
         <FAQ q="Do I need technical knowledge?" a="No. Just upload your resume or paste a JD." />
@@ -160,36 +179,37 @@ export default function Landing() {
       </section>
 
       {/* FOOTER */}
-      <footer className="py-12 text-center text-gray-700 text-lg">
+      <footer className="py-10 sm:py-12 text-center text-gray-700 text-base sm:text-lg">
         Built with ❤️ for Students • Powered by MERN + AI
       </footer>
     </div>
   );
 }
 
-/* FEATURE SECTION --------------------------------------------------- */
-
+/* FEATURE SECTION ================================ */
 function PremiumSection({ title, subtitle, desc, img, reverse }) {
   return (
-    <section className="px-6 py-24">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
-        
-        {/* TEXT */}
+    <section className="px-4 sm:px-6 py-20 sm:py-24">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 sm:gap-24 items-center">
+
         <div className={`${reverse ? "lg:order-2 fade-right" : "lg:order-1 fade-left"} reveal`}>
-          <h3 className="text-indigo-600 text-xl md:text-2xl font-semibold mb-4">{subtitle}</h3>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">{title}</h2>
-          <p className="text-gray-600 text-lg md:text-2xl leading-relaxed">{desc}</p>
+          <h3 className="text-indigo-600 text-lg sm:text-xl md:text-2xl font-semibold mb-2 sm:mb-4">
+            {subtitle}
+          </h3>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-4 sm:mb-6">
+            {title}
+          </h2>
+          <p className="text-gray-600 text-base sm:text-lg md:text-xl leading-relaxed">
+            {desc}
+          </p>
         </div>
 
-        {/* IMAGE */}
         <div
           className={`
             relative premium-img-wrapper
-            w-full h-[320px] md:h-[420px]
-            rounded-3xl overflow-hidden
-            bg-white border border-gray-200 shadow-xl
-            transition-all duration-500
-            hover:scale-[1.04] hover:shadow-2xl hover:brightness-[1.05]
+            w-full h-[240px] sm:h-[300px] md:h-[380px] lg:h-[420px]
+            rounded-3xl overflow-hidden bg-white border border-gray-200 shadow-xl
+            transition-all duration-500 hover:scale-[1.04] hover:shadow-2xl hover:brightness-[1.05]
             ${reverse ? "lg:order-1 fade-left" : "lg:order-2 fade-right"} reveal
           `}
         >
@@ -205,22 +225,23 @@ function PremiumSection({ title, subtitle, desc, img, reverse }) {
   );
 }
 
-/* FAQ --------------------------------------------------------------- */
-
+/* FAQ ================================ */
 function FAQ({ q, a }) {
   return (
     <details
       className="
-        max-w-4xl mx-auto mb-6 p-6 md:p-7
+        max-w-3xl mx-auto mb-5 sm:mb-6 p-5 sm:p-6 md:p-7
         border rounded-2xl bg-white shadow-md
         hover:shadow-xl transition-all
         fade-center reveal
       "
     >
-      <summary className="cursor-pointer font-semibold text-xl md:text-2xl">
+      <summary className="cursor-pointer font-semibold text-lg sm:text-xl md:text-2xl">
         {q}
       </summary>
-      <p className="mt-4 text-gray-600 text-lg md:text-xl">{a}</p>
+      <p className="mt-3 sm:mt-4 text-gray-600 text-base sm:text-lg md:text-xl">
+        {a}
+      </p>
     </details>
   );
 }
