@@ -1,22 +1,20 @@
 import { useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";   // <-- FIX 1
+import { useAuth } from "../context/AuthContext";
 
 export default function Landing() {
   const navigate = useNavigate();
-  const { login, token, loading } = useAuth();      // <-- FIX 2
+  const { login, token, loading } = useAuth();
 
-  // 🚀 FIX 3: Auto-redirect if already logged in
+  // Auto-redirect if logged in
   useEffect(() => {
     if (!loading && token) {
       navigate("/dashboard");
     }
   }, [loading, token]);
 
-  // ================================
-  // 1) Reveal animations
-  // ================================
+  // Reveal animations
   useEffect(() => {
     const elements = document.querySelectorAll(".reveal");
     const observer = new IntersectionObserver(
@@ -30,9 +28,7 @@ export default function Landing() {
     elements.forEach((el) => observer.observe(el));
   }, []);
 
-  // ================================
-  // 2) GOOGLE LOGIN INITIALIZATION
-  // ================================
+  // Google Login Init
   useEffect(() => {
     google.accounts.id.initialize({
       client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
@@ -40,14 +36,8 @@ export default function Landing() {
     });
   }, []);
 
-  // ================================
-  // 3) GOOGLE POPUP TRIGGER
-  // ================================
   const loginWithGoogle = () => google.accounts.id.prompt();
 
-  // ================================
-  // 4) HANDLE GOOGLE RESPONSE
-  // ================================
   const handleGoogleResponse = async (response) => {
     try {
       const { data } = await axios.post(
@@ -55,16 +45,37 @@ export default function Landing() {
         { credential: response.credential }
       );
 
-      login(data.token);          
+      login(data.token);
       navigate("/dashboard");
-
     } catch (error) {
       console.error("Google Login Error:", error);
     }
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#eef1ff] text-gray-900">
+    <div className="relative w-full min-h-screen text-[#111827] overflow-hidden">
+
+      {/* PREMIUM BACKGROUND */}
+      <div className="
+        absolute inset-0 -z-10 
+        bg-gradient-to-br from-[#f7f8ff] via-[#eef0ff] to-[#e7e9ff]
+      "></div>
+
+      {/* GLOW SPOTLIGHT */}
+      <div className="
+        absolute top-[-200px] left-1/2 -translate-x-1/2 
+        w-[900px] h-[900px]
+        bg-[radial-gradient(circle,rgba(150,115,255,0.18),transparent_70%)]
+        blur-[120px] -z-10
+      "></div>
+
+      {/* SOFT FADE AT BOTTOM OF HERO (HIDES NEXT SECTION PREVIEW) */}
+      <div className="
+        absolute bottom-0 left-0 w-full h-28 
+        bg-gradient-to-b from-transparent to-[#f7f8ff]
+        pointer-events-none
+        z-10
+      "></div>
 
       {/* ANIMATIONS */}
       <style>{`
@@ -78,50 +89,56 @@ export default function Landing() {
           position: absolute;
           inset: 0;
           border-radius: 1.5rem;
-          background: radial-gradient(circle at 30% 30%, rgba(150,120,255,0.12), rgba(255,255,255,0));
+          background: radial-gradient(circle at 30% 30%, rgba(180,150,255,0.14), rgba(255,255,255,0));
           pointer-events: none;
         }
       `}</style>
 
-      {/* HERO ================================ */}
+      {/* HERO SECTION */}
       <section
         id="hero"
         className="
-          min-h-[85vh]
-          flex flex-col items-center justify-center text-center px-4 sm:px-6
-          fade-center reveal pt-40 sm:pt-48
+          min-h-screen
+          flex flex-col items-center justify-center text-center
+          px-4 sm:px-6 fade-center reveal pb-24
         "
       >
+
+        {/* HERO TITLE */}
         <h1
           className="
-            text-[2rem] sm:text-[2.8rem] md:text-[4rem] lg:text-[5rem]
-            font-extrabold leading-[1.1] tracking-tight text-gray-900
-            max-w-4xl
+            text-[55px] sm:text-[70px] md:text-[85px] lg:text-[95px]
+            font-extrabold leading-[1.05] tracking-tight 
+            max-w-5xl
           "
         >
-          AI Career Assistant <br />
-          <span className="bg-gradient-to-r from-indigo-600 to-purple-600 text-transparent bg-clip-text">
-            Made Simple
+          Career Made <br />
+          <span className="bg-gradient-to-r from-fuchsia-500 to-indigo-600 text-transparent bg-clip-text drop-shadow-md">
+            Simple
           </span>
         </h1>
 
-        <p className="mt-6 text-base sm:text-lg md:text-xl lg:text-2xl text-gray-600 max-w-2xl leading-relaxed">
-          Improve your resume, analyze job descriptions, and practice mock interviews —
-          all powered by AI to help students and job seekers grow faster.
+        {/* TAGLINE */}
+        <p className="mt-6 text-[18px] sm:text-[20px] md:text-[22px] lg:text-[24px] text-gray-600 max-w-2xl leading-relaxed">
+          Smarter Career Decisions, Powered by AI.
         </p>
+
 
         {/* CTA BUTTON */}
         <button
           onClick={loginWithGoogle}
           className="
-            mt-10 px-6 sm:px-8 py-3 sm:py-3.5
-            bg-gradient-to-r from-indigo-600 to-purple-600
-            text-white rounded-xl text-base sm:text-lg font-semibold
-            shadow-lg hover:shadow-xl hover:scale-[1.03]
+            mt-10 px-8 sm:px-10 py-3.5
+            bg-gradient-to-r from-fuchsia-500 to-indigo-600
+            text-white rounded-lg 
+            text-base sm:text-lg font-semibold
+            shadow-[0_4px_25px_rgba(120,50,255,0.25)]
+            hover:shadow-[0_6px_30px_rgba(120,50,255,0.35)]
+            hover:scale-[1.045]
             transition-all duration-300
           "
         >
-          Try Career Nexus
+          Try Zyris
         </button>
       </section>
 
@@ -132,7 +149,7 @@ export default function Landing() {
         title="Smarter Resume Insights"
         subtitle="📄 AI Resume Analyzer"
         img="/resume.png"
-        desc="Instant insights on strengths, weaknesses, missing keywords, and recruiter-focused improvements."
+        desc="Instant insights on strengths, weaknesses, keywords, and recruiter-focused improvements."
       />
 
       <PremiumSection
@@ -140,7 +157,7 @@ export default function Landing() {
         subtitle="🎯 Job Description Analyzer"
         img="/jd.png"
         reverse
-        desc="See match %, missing skills, and tailored improvement steps based on any job description."
+        desc="See match %, missing skills, and tailored improvement steps for any JD."
       />
 
       <PremiumSection
@@ -155,7 +172,7 @@ export default function Landing() {
         subtitle="🔍 Match Engine"
         img="/match.png"
         reverse
-        desc="Deep resume vs. JD comparison to understand recruiter expectations."
+        desc="Deep resume–JD comparison to understand recruiter expectations."
       />
 
       <PremiumSection
@@ -175,13 +192,13 @@ export default function Landing() {
 
       {/* FAQ */}
       <section id="faq" className="px-4 sm:px-6 py-20 sm:py-28 fade-center reveal">
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-10 sm:mb-14">
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-12 sm:mb-16">
           FAQ
         </h2>
 
         <FAQ q="Is this really free?" a="Yes — fully free for students and educational use." />
         <FAQ q="Do I need technical knowledge?" a="No. Just upload your resume or paste a JD." />
-        <FAQ q="Is my data safe & private?" a="Absolutely — nothing is stored without permission, and your files remain secure." />
+        <FAQ q="Is my data safe & private?" a="Absolutely — your data remains private and secure." />
       </section>
 
       {/* FOOTER */}
@@ -192,14 +209,15 @@ export default function Landing() {
   );
 }
 
-/* FEATURE SECTION ================================ */
+
+/* FEATURE SECTION */
 function PremiumSection({ title, subtitle, desc, img, reverse }) {
   return (
     <section className="px-4 sm:px-6 py-20 sm:py-24">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 sm:gap-24 items-center">
 
         <div className={`${reverse ? "lg:order-2 fade-right" : "lg:order-1 fade-left"} reveal`}>
-          <h3 className="text-indigo-600 text-lg sm:text-xl md:text-2xl font-semibold mb-2 sm:mb-4">
+          <h3 className="text-fuchsia-600 text-lg sm:text-xl md:text-2xl font-semibold mb-2 sm:mb-4">
             {subtitle}
           </h3>
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-4 sm:mb-6">
@@ -231,21 +249,25 @@ function PremiumSection({ title, subtitle, desc, img, reverse }) {
   );
 }
 
-/* FAQ ================================ */
+
+/* FAQ COMPONENT */
 function FAQ({ q, a }) {
   return (
     <details
       className="
-        max-w-3xl mx-auto mb-5 sm:mb-6 p-5 sm:p-6 md:p-7
-        border rounded-2xl bg-white shadow-md
-        hover:shadow-xl transition-all
+        max-w-3xl mx-auto mb-6 sm:mb-8 p-6 sm:p-7 md:p-8
+        rounded-2xl border
+        bg-gradient-to-br from-white to-[#fafbff]
+        shadow-[0_5px_20px_rgba(150,115,255,0.12)]
+        hover:shadow-[0_5px_30px_rgba(150,115,255,0.22)]
+        transition-all duration-300
         fade-center reveal
       "
     >
       <summary className="cursor-pointer font-semibold text-lg sm:text-xl md:text-2xl">
         {q}
       </summary>
-      <p className="mt-3 sm:mt-4 text-gray-600 text-base sm:text-lg md:text-xl">
+      <p className="mt-4 text-gray-600 text-base sm:text-lg md:text-xl">
         {a}
       </p>
     </details>
