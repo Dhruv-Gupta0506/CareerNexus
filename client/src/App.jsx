@@ -130,7 +130,7 @@ function App() {
         {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
-    </>
+    </>   
   );
 }
 
