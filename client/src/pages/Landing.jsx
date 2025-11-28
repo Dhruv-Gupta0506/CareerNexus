@@ -1,9 +1,18 @@
 import { useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";   // <-- FIX 1
 
 export default function Landing() {
-  const navigate = useNavigate(); // <-- FIX ADDED
+  const navigate = useNavigate();
+  const { login, token, loading } = useAuth();      // <-- FIX 2
+
+  // 🚀 FIX 3: Auto-redirect if already logged in
+  useEffect(() => {
+    if (!loading && token) {
+      navigate("/dashboard");
+    }
+  }, [loading, token]);
 
   // ================================
   // 1) Reveal animations
@@ -46,10 +55,7 @@ export default function Landing() {
         { credential: response.credential }
       );
 
-      localStorage.setItem("token", data.token);
-
-      // ❌ window.location.href = "/dashboard"
-      // ✅ FIX:
+      login(data.token);          
       navigate("/dashboard");
 
     } catch (error) {
