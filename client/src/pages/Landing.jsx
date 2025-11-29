@@ -158,6 +158,7 @@ export default function Landing() {
           min-h-[80vh] sm:min-h-screen
           flex flex-col items-center justify-center text-center
           px-4 sm:px-6 fade-center reveal pb-8
+          pt-32 sm:pt-0
         "
       >
         <h1
