@@ -12,7 +12,7 @@ export default function Navbar() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [user, setUser] = useState(null);
   
-  // State to handle broken image links (fallback to initials)
+  // State to handle broken image links
   const [imgError, setImgError] = useState(false);
 
   const menuRef = useRef(null);
@@ -34,21 +34,18 @@ export default function Navbar() {
       .then((data) => {
         if (data) {
           setUser(data);
-          setImgError(false); // Reset error state on new user fetch
+          setImgError(false);
         }
       })
       .catch((err) => console.error("NAVBAR USER ERROR:", err));
   }, [token]);
 
-  // Determine which avatar to show
-  // If user has an avatar AND there is no error loading it, use it.
-  // Otherwise, use the UI Avatars generator.
   const avatarSrc =
     !imgError && user?.avatar
       ? user.avatar
       : `https://ui-avatars.com/api/?name=${user?.name || "User"}&background=6366f1&color=fff&rounded=true&size=128`;
 
-  // Close dropdown when clicking outside
+  // Close dropdown logic
   useEffect(() => {
     function handleClickOutside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -59,7 +56,6 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Smooth scroll helper
   const smoothScrollTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -68,12 +64,9 @@ export default function Navbar() {
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else {
-      console.warn(`Element with id="${id}" not found on this page.`);
     }
   };
 
-  // Logic for Logo click
   const goToTop = () => {
     if (!token) {
       smoothScrollTop();
@@ -87,11 +80,9 @@ export default function Navbar() {
     setTimeout(() => smoothScrollTop(), 250);
   };
 
-  // Logic for Features/FAQ click
   const handleNavClick = (sectionId) => {
     if (location.pathname !== "/") {
       navigate("/");
-      // Wait slightly longer for Landing page to mount before scrolling
       setTimeout(() => smoothScroll(sectionId), 400); 
     } else {
       smoothScroll(sectionId);
@@ -106,49 +97,66 @@ export default function Navbar() {
 
   return (
     <>
+      {/* 1. IMPORTING THE 'OUTFIT' FONT FOR THAT "COOL" CANVA LOOK */}
+      <style>
+        {`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&display=swap');`}
+      </style>
+
       {/* NAVBAR */}
       <nav
         className="
           w-full fixed top-0 left-0 z-50
-          backdrop-blur-xl bg-white/30
+          backdrop-blur-xl bg-white/60
           border-b border-white/40
-          shadow-[0_4px_15px_rgba(0,0,0,0.06)]
+          shadow-[0_4px_20px_rgba(0,0,0,0.03)]
+          transition-all duration-300
         "
+        style={{ fontFamily: "'Outfit', sans-serif" }} // Applying the font
       >
         <div className="max-w-[1500px] mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
 
-          {/* LEFT SIDE: LOGO */}
+          {/* LEFT SIDE: LOGO & BRAND */}
           {!token ? (
-            // LOGGED OUT (Landing)
+            // LOGGED OUT (Landing Page) -> Show Image + Text
             <button
               onClick={goToTop}
-              className="flex items-center gap-2 group"
+              className="flex items-center gap-3 group"
             >
+              {/* ✅ LOGO IMAGE: Bigger, Visible, with hover effect */}
               <img
                 src="/logo.png"
                 alt="Zyris Logo"
-                className="h-9 w-9 object-contain"
+                className="
+                  h-12 w-12 object-contain 
+                  drop-shadow-sm 
+                  group-hover:scale-110 group-hover:rotate-3 
+                  transition-transform duration-300 ease-out
+                "
               />
+              
+              {/* ✅ TEXT: Updated Gradient & Font */}
               <span
                 className="
-                  text-[28px] font-extrabold tracking-tight
-                  bg-gradient-to-r from-sky-500 via-indigo-600 to-indigo-700
+                  text-[32px] font-extrabold tracking-tight
+                  bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
                   bg-clip-text text-transparent
+                  group-hover:brightness-110
+                  transition-all duration-300
                 "
               >
                 Zyris
               </span>
             </button>
           ) : (
-            // LOGGED IN (Dashboard)
-            <button onClick={goToTop} className="flex items-center gap-2 group">
-               {/* Optional: Add small logo here too if you want */}
+            // LOGGED IN (Dashboard) -> Only Text (No Image)
+            <button onClick={goToTop} className="flex items-center group">
               <span
                 className="
-                  text-[28px] font-extrabold tracking-tight
-                  bg-gradient-to-r from-emerald-800 via-teal-700 to-cyan-600
+                  text-[32px] font-extrabold tracking-tight
+                  bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
                   bg-clip-text text-transparent
-                  transition group-hover:brightness-110
+                  group-hover:scale-[1.02]
+                  transition-transform duration-300
                 "
               >
                 Zyris
@@ -156,45 +164,56 @@ export default function Navbar() {
             </button>
           )}
 
-          {/* RIGHT SIDE */}
+          {/* RIGHT SIDE: NAVIGATION */}
           {!token ? (
             <div className="flex items-center space-x-8 sm:space-x-12">
               <button
                 onClick={() => handleNavClick("features")}
-                className="text-lg font-medium text-gray-700 hover:text-indigo-600 transition"
+                className="
+                  text-lg font-bold text-gray-600 
+                  hover:text-indigo-600 hover:-translate-y-0.5
+                  transition-all duration-200
+                "
               >
                 Features
               </button>
               <button
                 onClick={() => handleNavClick("faq")}
-                className="text-lg font-medium text-gray-700 hover:text-indigo-600 transition"
+                className="
+                  text-lg font-bold text-gray-600 
+                  hover:text-indigo-600 hover:-translate-y-0.5
+                  transition-all duration-200
+                "
               >
                 FAQ
               </button>
             </div>
           ) : (
+            // LOGGED IN: Profile Menu
             <div className="relative" ref={menuRef}>
               <img
                 src={avatarSrc}
                 alt="avatar"
-                referrerPolicy="no-referrer" // ✅ FIXED: Allows Google images on localhost
-                onError={() => setImgError(true)} // ✅ FIXED: Fallback if image fails
+                referrerPolicy="no-referrer"
+                onError={() => setImgError(true)}
                 onClick={() => setShowMenu(!showMenu)}
                 className="
                   h-11 w-11 rounded-full cursor-pointer
-                  border border-gray-300 object-cover
-                  hover:scale-[1.05] transition
-                  bg-white
+                  border-2 border-white shadow-md object-cover
+                  hover:scale-[1.1] hover:shadow-lg
+                  transition-all duration-300
+                  bg-gray-100
                 "
               />
 
               {showMenu && (
                 <div
                   className="
-                    absolute right-0 mt-3 w-44
+                    absolute right-0 mt-3 w-48
                     bg-white/95 backdrop-blur-xl
-                    shadow-xl rounded-xl
-                    border border-gray-200 overflow-hidden
+                    shadow-2xl rounded-2xl
+                    border border-gray-100 overflow-hidden
+                    animate-in fade-in slide-in-from-top-2 duration-200
                   "
                 >
                   <button
@@ -202,17 +221,19 @@ export default function Navbar() {
                       setShowMenu(false);
                       setShowProfileModal(true);
                     }}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-100"
+                    className="w-full text-left px-5 py-3.5 hover:bg-gray-50 text-gray-700 font-medium transition-colors"
                   >
                     Profile
                   </button>
+
+                  <div className="h-[1px] bg-gray-100 mx-2"></div>
 
                   <button
                     onClick={() => {
                       setShowMenu(false);
                       setShowLogoutModal(true);
                     }}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-100 text-red-500"
+                    className="w-full text-left px-5 py-3.5 hover:bg-red-50 text-red-500 font-medium transition-colors"
                   >
                     Logout
                   </button>
@@ -225,21 +246,11 @@ export default function Navbar() {
 
       {/* PROFILE MODAL */}
       {showProfileModal && user && (
-        <div
-          className="
-            fixed inset-0 flex items-center justify-center z-[999]
-            backdrop-blur-md bg-black/40
-          "
-        >
-          <div
-            className="
-              bg-white/95 backdrop-blur-xl p-8 rounded-2xl shadow-2xl
-              max-w-sm w-full text-center relative
-            "
-          >
+        <div className="fixed inset-0 flex items-center justify-center z-[999] backdrop-blur-md bg-black/40">
+          <div className="bg-white/95 backdrop-blur-xl p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center relative font-sans">
             <button
               onClick={() => setShowProfileModal(false)}
-              className="absolute top-4 right-4 text-xl text-gray-500 hover:text-gray-800"
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
             >
               ✕
             </button>
@@ -248,48 +259,38 @@ export default function Navbar() {
               src={avatarSrc}
               referrerPolicy="no-referrer"
               onError={() => setImgError(true)}
-              className="h-24 w-24 rounded-full mx-auto mb-4 shadow-md object-cover bg-gray-100"
+              className="h-24 w-24 rounded-full mx-auto mb-4 shadow-lg object-cover bg-gray-100 border-4 border-white"
               alt="Profile"
             />
 
-            <h2 className="text-2xl font-bold text-gray-800">{user.name}</h2>
-            <p className="text-gray-600 mt-1">{user.email}</p>
+            <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
+            <p className="text-gray-500 font-medium mt-1">{user.email}</p>
           </div>
         </div>
       )}
 
       {/* LOGOUT MODAL */}
       {showLogoutModal && (
-        <div
-          className="
-            fixed inset-0 flex items-center justify-center z-[999]
-            backdrop-blur-md bg-black/40
-          "
-        >
-          <div
-            className="
-              bg-white/95 backdrop-blur-xl p-8 rounded-2xl shadow-2xl
-              max-w-sm w-full text-center
-            "
-          >
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">
-              Confirm Logout
+        <div className="fixed inset-0 flex items-center justify-center z-[999] backdrop-blur-md bg-black/40">
+          <div className="bg-white/95 backdrop-blur-xl p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center font-sans">
+            <h2 className="text-2xl font-bold mb-3 text-gray-900">
+              Logging Out?
             </h2>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to log out?
+            <p className="text-gray-500 font-medium mb-8">
+              We'll miss you! Come back soon to track your progress.
             </p>
 
             <div className="flex justify-between gap-4">
               <button
                 onClick={() => setShowLogoutModal(false)}
-                className="flex-1 px-6 py-2 rounded-xl border border-gray-400 hover:bg-gray-50"
+                className="flex-1 px-6 py-3 rounded-xl border border-gray-200 font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
 
               <button
                 onClick={confirmLogout}
-                className="flex-1 px-6 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600"
+                className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-red-500 to-pink-600 text-white font-semibold shadow-lg hover:shadow-red-500/30 hover:scale-[1.02] transition-all"
               >
                 Logout
               </button>
