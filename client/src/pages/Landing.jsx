@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -7,6 +7,9 @@ export default function Landing() {
   const navigate = useNavigate();
   const { login, token, loading } = useAuth();
   const cursorGlowRef = useRef(null);
+  
+  // ✅ STATE: Track if Google Script is ready
+  const [googleReady, setGoogleReady] = useState(false);
 
   // Auto redirect
   useEffect(() => {
@@ -28,28 +31,47 @@ export default function Landing() {
   }, []);
 
   // ============================
-  // GOOGLE LOGIN SETUP
+  // GOOGLE LOGIN SETUP (FIXED DELAY)
   // ============================
   useEffect(() => {
-    if (!window.google) return;
+    // Function to initialize Google Button
+    const initGoogle = () => {
+      if (!window.google) return;
 
-    google.accounts.id.initialize({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      callback: handleGoogleResponse,
-      auto_select: false, // Prevents auto-popup if desired
-    });
+      google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        callback: handleGoogleResponse,
+        auto_select: false,
+      });
 
-    // Render REAL Google button (invisible overlay)
-    google.accounts.id.renderButton(
-      document.getElementById("googleBtn"),
-      {
-        theme: "filled_blue",
-        size: "large",
-        width: 350, // Wide enough to cover the custom button
-        type: "standard",
-        shape: "rectangular",
-      }
-    );
+      google.accounts.id.renderButton(
+        document.getElementById("googleBtn"),
+        {
+          theme: "filled_blue",
+          size: "large",
+          width: 350,
+          type: "standard",
+          shape: "rectangular",
+        }
+      );
+      
+      // ✅ Signal that Google is ready
+      setGoogleReady(true);
+    };
+
+    // ✅ CHECK: Is Google loaded?
+    if (window.google) {
+      initGoogle();
+    } else {
+      // If not, check every 100ms until it is (Simple & Robust)
+      const timer = setInterval(() => {
+        if (window.google) {
+          initGoogle();
+          clearInterval(timer);
+        }
+      }, 100);
+      return () => clearInterval(timer);
+    }
   }, []);
 
   const handleGoogleResponse = async (response) => {
@@ -117,7 +139,6 @@ export default function Landing() {
         .fade-center { opacity: 0; transform: translateY(40px); transition: 0.8s ease-out; }
         .active { opacity: 1 !important; transform: translate(0,0) !important; }
         
-        /* Fix for invisible Google button iframe */
         #googleBtn iframe { margin: 0 !important; display: block !important; } 
 
         .premium-img-wrapper::before {
@@ -169,27 +190,27 @@ export default function Landing() {
         </p>
 
         {/* ========================================================= */}
-        {/* NEW BUTTON WRAPPER - The Secret to making it work */}
+        {/* BUTTON WRAPPER */}
         {/* ========================================================= */}
         <div className="relative mt-10 inline-block group">
           
-          {/* VISUAL BUTTON (User sees this) */}
+          {/* VISUAL BUTTON (Changes text if loading) */}
           <button
-            className="
+            className={`
               pointer-events-none
               px-8 sm:px-10 py-3.5
               bg-gradient-to-r from-fuchsia-500 to-indigo-600
               text-white rounded-lg 
               text-base sm:text-lg font-semibold
               shadow-[0_4px_25px_rgba(120,50,255,0.25)]
-              
-              /* 'group-hover' ensures the animation plays when hovering the overlay */
-              group-hover:shadow-[0_6px_30px_rgba(120,50,255,0.35)]
-              group-hover:scale-[1.045]
               transition-all duration-300
-            "
+              
+              /* Only glow/scale if loaded */
+              ${googleReady ? 'group-hover:shadow-[0_6px_30px_rgba(120,50,255,0.35)] group-hover:scale-[1.045]' : 'opacity-80'}
+            `}
           >
-            Try Zyris
+            {/* ✅ SHOW LOADING UNTIL GOOGLE SCRIPT ARRIVES */}
+            {googleReady ? "Try Zyris" : "Loading..."}
           </button>
 
           {/* REAL GOOGLE BUTTON (Invisible Overlay) */}
@@ -201,7 +222,10 @@ export default function Landing() {
         </div>
 
       </section>
+
+      {/* ✅ SCROLL ANCHOR */}
       <div id="features" className="scroll-mt-32"></div>
+
       {/* MOBILE Why Choose */}
       <h2 className="sm:hidden text-3xl text-center font-bold text-[#2b2055] mt-4 mb-4">
         Why Choose Zyris?
