@@ -353,7 +353,7 @@ export default function JDAnalyzer() {
         {/* BACK TO DASHBOARD BUTTON */}
         <div className="mt-20 mb-8 max-w-2xl mx-auto">
           <button
-            onClick={() => navigate("/dashboard")}
+            onClick={() =>{ window.scrollTo(0, 0); navigate("/dashboard")}}
             className="w-full py-4 rounded-xl font-bold text-lg text-white shadow-[0_4px_20px_rgba(120,50,255,0.2)] bg-gradient-to-r from-fuchsia-500 to-indigo-600 hover:scale-[1.01] hover:shadow-[0_6px_30px_rgba(120,50,255,0.3)] transition-all duration-300 flex items-center justify-center gap-2"
           >
             <ArrowLeft className="w-5 h-5" />

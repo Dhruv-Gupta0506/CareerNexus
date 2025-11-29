@@ -1,25 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const JobAnalysis = require("../models/JobAnalysis");
 const ResumeAnalysis = require("../models/ResumeAnalysis");
-
-// ---- helper to parse JSON safely ----
-function parseGeminiJson(text) {
-  if (!text) return null;
-  try {
-    const trimmed = text.trim();
-    // Raw JSON
-    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-      return JSON.parse(trimmed);
-    }
-    // Extract first JSON object block
-    const match = trimmed.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
-    return null;
-  } catch (err) {
-    console.error("JD JSON PARSE ERROR:", err.message);
-    return null;
-  }
-}
+const { tryParseJson, generateWithRetry } = require("../utils/aiHelper"); // Import helper
 
 // ===============================
 // ANALYZE JD – FIXED SCALING & PROMPT
@@ -99,9 +81,10 @@ exports.analyzeJob = async (req, res) => {
     ${JSON.stringify(latestResume, null, 2)}
     `;
 
-    const result = await model.generateContent([{ text: prompt }]);
+    // --- RETRY LOGIC (Handling Network Errors) ---
+    const result = await generateWithRetry(model, prompt);
     const rawText = result.response.text();
-    const parsed = parseGeminiJson(rawText) || {};
+    const parsed = tryParseJson(rawText) || {};
 
     // Default values if AI fails to return structure
     const safeParsed = {
@@ -149,18 +132,24 @@ exports.analyzeJob = async (req, res) => {
 
   } catch (err) {
     console.error("JD ANALYSIS ERROR:", err);
+    
+    // Friendly error message for network issues
+    const message = err.message.includes("fetch failed") 
+      ? "Network error connecting to AI. Please try again." 
+      : "Job analysis failed";
+
     return res.status(500).json({
       success: false,
-      message: "Job analysis failed",
+      message,
       error: err.message,
     });
   }
 };
 
 // ===============================
-// HISTORY
+// GET HISTORY
 // ===============================
-exports.history = async (req, res) => {
+exports.getHistory = async (req, res) => {
   try {
     const records = await JobAnalysis.find({ user: req.user })
       .sort({ createdAt: -1 })
@@ -179,5 +168,29 @@ exports.history = async (req, res) => {
       message: "Failed to load JD history",
       error: err.message,
     });
+  }
+};
+
+// ===============================
+// DELETE JOB ANALYSIS (New Feature)
+// ===============================
+exports.deleteJob = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Use findOneAndDelete with 'user' to ensure users can only delete THEIR OWN data
+    const deleted = await JobAnalysis.findOneAndDelete({ 
+      _id: id, 
+      user: req.user 
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Record not found or unauthorized" });
+    }
+
+    res.json({ success: true, message: "Job analysis deleted successfully" });
+  } catch (error) {
+    console.error("DELETE ERROR:", error);
+    res.status(500).json({ success: false, message: "Delete failed" });
   }
 };

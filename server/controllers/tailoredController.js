@@ -1,39 +1,9 @@
-// controllers/tailoredController.js
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const ResumeAnalysis = require("../models/ResumeAnalysis");
 const JobAnalysis = require("../models/JobAnalysis");
 const MatchAnalysis = require("../models/MatchAnalysis");
 const TailoredResume = require("../models/TailoredResume");
-
-// --------------------------------------------------
-// SAFE JSON PARSER
-// --------------------------------------------------
-function tryParseJson(text) {
-  if (!text || typeof text !== "string") return null;
-
-  try {
-    const t = text.trim();
-    // Handle markdown code blocks
-    const cleanText = t.replace(/```json|```/g, "").trim();
-
-    // Standard valid JSON
-    if (
-      (cleanText.startsWith("{") && cleanText.endsWith("}")) ||
-      (cleanText.startsWith("[") && cleanText.endsWith("]"))
-    ) {
-      return JSON.parse(cleanText);
-    }
-
-    // Extract JSON from within text
-    const matchObj = cleanText.match(/\{[\s\S]*\}/);
-    if (matchObj) return JSON.parse(matchObj[0]);
-
-    return null;
-  } catch (err) {
-    console.error("JSON PARSE ERROR (tailoredController):", err.message);
-    return null;
-  }
-}
+const { tryParseJson, generateWithRetry } = require("../utils/aiHelper"); // Import helper
 
 // --------------------------------------------------
 // SANITIZERS
@@ -137,7 +107,8 @@ exports.generateTailored = async (req, res) => {
 
     const prompt = buildPrompt({ resume, job, match });
 
-    const result = await model.generateContent([{ text: prompt }]);
+    // --- RETRY LOGIC ---
+    const result = await generateWithRetry(model, prompt);
     const rawText = result.response.text();
 
     // Parse JSON
@@ -185,18 +156,23 @@ exports.generateTailored = async (req, res) => {
     });
   } catch (err) {
     console.error("TAILORED RESUME ERROR:", err);
+    
+    const message = err.message.includes("fetch failed") 
+      ? "Network error connecting to AI. Please try again." 
+      : "Tailored resume generation failed";
+
     return res.status(500).json({
       success: false,
-      message: "Tailored resume generation failed",
+      message,
       error: err.message,
     });
   }
 };
 
 // --------------------------------------------------
-// HISTORY
+// GET HISTORY
 // --------------------------------------------------
-exports.history = async (req, res) => {
+exports.getHistory = async (req, res) => {
   try {
     const records = await TailoredResume.find({ user: req.user })
       .sort({ createdAt: -1 })
@@ -243,5 +219,28 @@ exports.getById = async (req, res) => {
       message: "Failed to fetch tailored resume",
       error: err.message,
     });
+  }
+};
+
+// --------------------------------------------------
+// DELETE TAILORED RESUME (New Feature)
+// --------------------------------------------------
+exports.deleteTailoredResume = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deleted = await TailoredResume.findOneAndDelete({ 
+      _id: id, 
+      user: req.user 
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Record not found or unauthorized" });
+    }
+
+    res.json({ success: true, message: "Tailored resume deleted successfully" });
+  } catch (error) {
+    console.error("DELETE ERROR:", error);
+    res.status(500).json({ success: false, message: "Delete failed" });
   }
 };

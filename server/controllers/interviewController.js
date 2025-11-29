@@ -1,30 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Interview = require("../models/Interview");
 const crypto = require("crypto");
-
-// ---- Helper to parse JSON safely ----
-function parseGeminiJson(text) {
-  if (!text) return null;
-  try {
-    const trimmed = text.trim();
-    // Handle markdown code blocks
-    const cleanText = trimmed.replace(/```json|```/g, "").trim();
-    
-    // Raw JSON array
-    if (cleanText.startsWith("[") && cleanText.endsWith("]")) {
-      return JSON.parse(cleanText);
-    }
-    
-    // Extract JSON array block
-    const match = cleanText.match(/\[[\s\S]*\]/);
-    if (match) return JSON.parse(match[0]);
-
-    return null;
-  } catch (err) {
-    console.error("INTERVIEW JSON PARSE ERROR:", err.message);
-    return null;
-  }
-}
+const { tryParseJson, generateWithRetry } = require("../utils/aiHelper"); // Import helper
 
 // =========================================================
 // ROLE CATEGORY CLASSIFIER
@@ -72,14 +49,13 @@ exports.generateQuestions = async (req, res) => {
     const seed = crypto.randomUUID();
     const timestamp = Date.now();
 
-    const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-      .getGenerativeModel({
-        model: "gemini-2.0-flash",
-        generationConfig: {
-          temperature: difficulty === "easy" ? 0.7 : 
-                       difficulty === "medium" ? 0.85 : 1.0 
-        }
-      });
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash",
+      generationConfig: {
+        temperature: difficulty === "easy" ? 0.7 : difficulty === "medium" ? 0.85 : 1.0 
+      }
+    });
 
     const prompt = `
     Generate exactly ${questionCount} interview questions for a ${role} position.
@@ -103,11 +79,13 @@ exports.generateQuestions = async (req, res) => {
     Return ONLY valid JSON.
     `;
 
-    const response = await ai.generateContent([{ text: prompt }]);
-    const raw = response.response.text();
+    // --- RETRY LOGIC ---
+    const result = await generateWithRetry(model, prompt);
+    const raw = result.response.text();
     
-    let questions = parseGeminiJson(raw);
+    let questions = tryParseJson(raw);
 
+    // Fallback if AI returns unstructured text instead of JSON array
     if (!questions || !Array.isArray(questions)) {
       console.warn("Gemini returned non-JSON, falling back to split");
       questions = raw.split("\n")
@@ -121,7 +99,12 @@ exports.generateQuestions = async (req, res) => {
 
   } catch (err) {
     console.error("QUESTION GEN ERROR:", err);
-    return res.status(500).json({ message: "Failed to generate questions" });
+    
+    const message = err.message.includes("fetch failed") 
+      ? "Network error connecting to AI. Please try again." 
+      : "Failed to generate questions";
+
+    return res.status(500).json({ message, error: err.message });
   }
 };
 
@@ -135,11 +118,11 @@ exports.evaluateInterview = async (req, res) => {
     if (!questions || !answers)
       return res.status(400).json({ message: "Missing data" });
 
-    const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-      .getGenerativeModel({
-        model: "gemini-2.0-flash",
-        generationConfig: { temperature: 0.15 } // Lower temp for strict grading
-      });
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash",
+      generationConfig: { temperature: 0.15 } // Lower temp for strict grading
+    });
 
     const prompt = `
     Act as a "Bar Raiser" / Senior Technical Interviewer at a top-tier tech company (FAANG).
@@ -182,8 +165,9 @@ exports.evaluateInterview = async (req, res) => {
     [Short, motivating sentence]
     `;
 
-    const response = await ai.generateContent([{ text: prompt }]);
-    const evaluationText = response.response.text();
+    // --- RETRY LOGIC ---
+    const result = await generateWithRetry(model, prompt);
+    const evaluationText = result.response.text();
 
     const scoreMatch = evaluationText.match(/Overall Score:\s*(\d{1,3})/i);
     let score = scoreMatch ? parseInt(scoreMatch[1]) : 0;
@@ -209,14 +193,19 @@ exports.evaluateInterview = async (req, res) => {
 
   } catch (err) {
     console.error("EVALUATION ERROR:", err);
-    return res.status(500).json({ message: "Interview evaluation failed" });
+    
+    const message = err.message.includes("fetch failed") 
+      ? "Network error connecting to AI. Please try again." 
+      : "Interview evaluation failed";
+
+    return res.status(500).json({ message, error: err.message });
   }
 };
 
 // =========================================================
-// HISTORY
+// GET HISTORY
 // =========================================================
-exports.history = async (req, res) => {
+exports.getHistory = async (req, res) => {
   try {
     const records = await Interview.find({ user: req.user })
       .sort({ createdAt: -1 });
@@ -228,5 +217,28 @@ exports.history = async (req, res) => {
       message: "Failed to load history",
       error: err.message
     });
+  }
+};
+
+// =========================================================
+// DELETE INTERVIEW (New Feature)
+// =========================================================
+exports.deleteInterview = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deleted = await Interview.findOneAndDelete({ 
+      _id: id, 
+      user: req.user 
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Record not found or unauthorized" });
+    }
+
+    res.json({ success: true, message: "Interview record deleted successfully" });
+  } catch (error) {
+    console.error("DELETE ERROR:", error);
+    res.status(500).json({ success: false, message: "Delete failed" });
   }
 };

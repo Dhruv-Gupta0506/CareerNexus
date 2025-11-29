@@ -1,21 +1,31 @@
 const express = require("express");
 const router = express.Router();
-
-const {
-  generateQuestions,
-  evaluateInterview,
-  history
+const { apiLimiter, aiLimiter } = require("../middleware/rateLimiter"); // Import Rate Limiters
+const { 
+  generateQuestions, 
+  evaluateInterview, 
+  getHistory, // Updated name
+  deleteInterview // New delete function
 } = require("../controllers/interviewController");
-
 const authMiddleware = require("../middleware/authMiddleware");
 
-// Generate interview questions
-router.post("/generate", authMiddleware, generateQuestions);
+// 1. Generate Questions
+// - Protected
+// - AI Rate Limit (20/hour)
+router.post("/generate", authMiddleware, aiLimiter, generateQuestions);
 
-// Evaluate answers and save interview
-router.post("/evaluate", authMiddleware, evaluateInterview);
+// 2. Evaluate Answers
+// - Protected
+// - AI Rate Limit (20/hour)
+router.post("/evaluate", authMiddleware, aiLimiter, evaluateInterview);
 
-// Interview history
-router.get("/history", authMiddleware, history);
+// 3. Get Interview History
+// - Protected
+// - General API Limit (100/15min)
+router.get("/history", authMiddleware, apiLimiter, getHistory);
+
+// 4. Delete Interview Record
+// - Protected
+router.delete("/history/:id", authMiddleware, deleteInterview);
 
 module.exports = router;

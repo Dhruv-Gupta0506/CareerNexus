@@ -236,7 +236,9 @@ export default function Dashboard() {
                 return (
                 <div
                     key={i}
-                    onClick={() => navigate(card.path)}
+                    onClick={() =>{
+                      window.scrollTo(0, 0);
+                      navigate(card.path)}}
                     className="
                     group relative p-8 rounded-[2rem] cursor-pointer select-none
                     bg-white/60 backdrop-blur-xl border border-white/50
@@ -287,7 +289,9 @@ export default function Dashboard() {
                 return (
                 <div
                     key={i}
-                    onClick={() => navigate(card.path)}
+                    onClick={() =>{
+                      window.scrollTo(0, 0);
+                      navigate(card.path)}}
                     className="
                     group flex items-center p-6 sm:p-8 rounded-[1.5rem] cursor-pointer select-none
                     bg-white/60 backdrop-blur-lg border border-white/60

@@ -1,4 +1,3 @@
-// controllers/resumeController.js
 const fs = require("fs");
 const path = require("path");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
@@ -200,8 +199,14 @@ FINAL RULE:
 Return ONLY the JSON object matching the schema above.
 `;
 
-    // Send prompt + PDF inline
-    const result = await model.generateContent([
+    // --- RETRY LOGIC (Handling Network Errors) ---
+    // We try 3 times. If it fails due to internet (fetch failed), we wait and retry.
+    let result;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    // Define the parts payload for Gemini
+    const parts = [
       { text: prompt },
       {
         inlineData: {
@@ -209,7 +214,23 @@ Return ONLY the JSON object matching the schema above.
           mimeType: "application/pdf",
         },
       },
-    ]);
+    ];
+
+    while (retryCount < maxRetries) {
+      try {
+        result = await model.generateContent(parts);
+        break; // Success! Exit loop
+      } catch (err) {
+        console.warn(`Gemini Attempt ${retryCount + 1} Failed: ${err.message}`);
+        retryCount++;
+        
+        // If we ran out of retries, throw the error to be caught below
+        if (retryCount === maxRetries) throw err;
+        
+        // Wait 2 seconds before trying again
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
 
     const rawText = result.response.text();
     const parsed = parseGeminiJson(rawText);
@@ -276,11 +297,18 @@ Return ONLY the JSON object matching the schema above.
     });
   } catch (err) {
     console.error("RESUME ANALYSIS ERROR:", err);
-    // attempt to cleanup upload if present
+    
+    // Attempt to cleanup upload if present
     try { if (req.file && req.file.path) fs.unlinkSync(req.file.path); } catch (e) {}
+    
+    // Send user-friendly error if it's a network issue
+    const message = err.message.includes("fetch failed") 
+      ? "Network error connecting to AI. Please try again." 
+      : "Resume analysis failed.";
+
     return res.status(500).json({
       success: false,
-      message: "Resume analysis failed",
+      message,
       error: err.message,
     });
   }
@@ -289,7 +317,7 @@ Return ONLY the JSON object matching the schema above.
 // ===============================
 // HISTORY (STRUCTURED, CLEAN)
 // ===============================
-exports.history = async (req, res) => {
+exports.getHistory = async (req, res) => {
   try {
     const records = await ResumeAnalysis.find({ user: req.user })
       .sort({ createdAt: -1 })
@@ -308,5 +336,29 @@ exports.history = async (req, res) => {
       message: "Failed to load resume history",
       error: err.message,
     });
+  }
+};
+
+// ===============================
+// DELETE (NEW FEATURE)
+// ===============================
+exports.deleteResume = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Use findOneAndDelete with 'user' to ensure users can only delete THEIR OWN data
+    const deleted = await ResumeAnalysis.findOneAndDelete({ 
+      _id: id, 
+      user: req.user 
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Record not found or unauthorized" });
+    }
+
+    res.json({ success: true, message: "Analysis deleted successfully" });
+  } catch (error) {
+    console.error("DELETE ERROR:", error);
+    res.status(500).json({ success: false, message: "Delete failed" });
   }
 };

@@ -1,8 +1,8 @@
-// controllers/matchController.js
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const ResumeAnalysis = require("../models/ResumeAnalysis");
 const JobAnalysis = require("../models/JobAnalysis");
 const MatchAnalysis = require("../models/MatchAnalysis");
+const { tryParseJson, generateWithRetry } = require("../utils/aiHelper"); // Import helper
 
 // ---------- Helpers ----------
 function norm(s) {
@@ -16,26 +16,6 @@ function safeArr(a) {
 function clamp(n, min, max) {
   if (typeof n !== "number" || Number.isNaN(n)) return min;
   return Math.max(min, Math.min(max, n));
-}
-
-// robust JSON extraction from model text
-function parseGeminiJson(text) {
-  if (!text || typeof text !== "string") return null;
-  try {
-    const t = text.trim();
-    // Handle markdown code blocks
-    const cleanText = t.replace(/```json|```/g, "").trim();
-    
-    if ((cleanText.startsWith("{") && cleanText.endsWith("}")) || (cleanText.startsWith("[") && cleanText.endsWith("]"))) {
-      return JSON.parse(cleanText);
-    }
-    const objMatch = cleanText.match(/\{[\s\S]*\}/);
-    if (objMatch) return JSON.parse(objMatch[0]);
-    return null;
-  } catch (err) {
-    console.error("PARSE GEMINI JSON ERROR:", err.message);
-    return null;
-  }
 }
 
 // fallback deterministic heuristic when AI output invalid
@@ -84,7 +64,7 @@ function deterministicFallback(resume, job) {
 }
 
 // ===============================
-// ANALYZE MATCH - UPDATED LOGIC
+// ANALYZE MATCH
 // ===============================
 exports.analyzeMatch = async (req, res) => {
   try {
@@ -155,9 +135,10 @@ exports.analyzeMatch = async (req, res) => {
     ${JSON.stringify(resume, null, 2)}
     `;
 
-    const result = await model.generateContent([{ text: prompt }]);
+    // --- RETRY LOGIC ---
+    const result = await generateWithRetry(model, prompt);
     const rawText = result.response.text();
-    const parsed = parseGeminiJson(rawText);
+    const parsed = tryParseJson(rawText);
 
     let safeOutput = null;
 
@@ -251,18 +232,23 @@ exports.analyzeMatch = async (req, res) => {
     });
   } catch (err) {
     console.error("MATCH ANALYSIS ERROR:", err);
+    
+    const message = err.message.includes("fetch failed") 
+      ? "Network error connecting to AI. Please try again." 
+      : "Failed to compute resume-JD match";
+
     return res.status(500).json({
       success: false,
-      message: "Failed to compute resume-JD match",
+      message,
       error: err.message,
     });
   }
 };
 
 // ===============================
-// MATCH ANALYSIS HISTORY
+// GET HISTORY
 // ===============================
-exports.matchHistory = async (req, res) => {
+exports.getHistory = async (req, res) => {
   try {
     const records = await MatchAnalysis.find({ user: req.user })
       .sort({ createdAt: -1 })
@@ -281,5 +267,28 @@ exports.matchHistory = async (req, res) => {
       message: "Failed to load match history",
       error: err.message,
     });
+  }
+};
+
+// ===============================
+// DELETE MATCH (New Feature)
+// ===============================
+exports.deleteMatch = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deleted = await MatchAnalysis.findOneAndDelete({ 
+      _id: id, 
+      user: req.user 
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Record not found or unauthorized" });
+    }
+
+    res.json({ success: true, message: "Match analysis deleted successfully" });
+  } catch (error) {
+    console.error("DELETE ERROR:", error);
+    res.status(500).json({ success: false, message: "Delete failed" });
   }
 };
