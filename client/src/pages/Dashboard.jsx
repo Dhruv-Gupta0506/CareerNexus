@@ -115,10 +115,11 @@ const FloatingBackground = () => {
    2. MAIN DASHBOARD COMPONENT
    ================================================================================== */
 export default function Dashboard() {
-  const { token, logout } = useAuth();
+  const { token, logout ,loading: authLoading } = useAuth();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true); // Added loading state
   const navigate = useNavigate();
+  
 
   useEffect(() => {
     if (!token) {
@@ -142,6 +143,13 @@ export default function Dashboard() {
       .catch((err) => console.error("FETCH USER ERROR:", err))
       .finally(() => setLoading(false)); // Ensure loading stops
   }, [token]);
+  if (authLoading || loading) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center text-gray-600">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   const features = [
     {
@@ -361,15 +369,15 @@ export default function Dashboard() {
           }
         }
 
-        
-        .animate-header-desktop {
+        @media (min-width: 640px) {
+          .animate-header-desktop {
             animation: fade-in-down 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-        }
+          }
 
-        .animate-content-desktop {
+          .animate-content-desktop {
             animation: fade-in-up 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+          }
         }
-        
       `}</style>
     </div>
   );
