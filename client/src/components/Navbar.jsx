@@ -304,7 +304,7 @@ export default function Navbar() {
 				{/* 4. MOBILE DROPDOWN OVERLAY */}
 				{isMobileMenuOpen && (
 					<div className="lg:hidden absolute top-full left-0 w-full bg-white/95 backdrop-blur-xl border-b border-gray-100 shadow-xl animate-in slide-in-from-top-5 duration-300 h-[calc(100vh-70px)] overflow-y-auto">
-						<div className="p-6 space-y-6">
+						<div className="px-6 pt-6 pb-20 space-y-6">
 							
 							{/* PUBLIC LINKS (Top priority for unauthenticated users) */}
 							{!token && (
