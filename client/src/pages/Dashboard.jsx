@@ -361,15 +361,15 @@ export default function Dashboard() {
           }
         }
 
-        @media (min-width: 640px) {
-          .animate-header-desktop {
+        
+        .animate-header-desktop {
             animation: fade-in-down 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-          }
-
-          .animate-content-desktop {
-            animation: fade-in-up 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-          }
         }
+
+        .animate-content-desktop {
+            animation: fade-in-up 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+        
       `}</style>
     </div>
   );
