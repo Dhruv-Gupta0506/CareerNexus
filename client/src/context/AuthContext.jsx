@@ -7,14 +7,11 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load token immediately on app start
+    // Load token instantly on app start
     const savedToken = localStorage.getItem("token");
-    if (savedToken) {
-      setToken(savedToken);
-    }
 
-    // Stop loading after token check
-    setLoading(false);
+    setToken(savedToken || null);
+    setLoading(false); // stop loading immediately
   }, []);
 
   const login = (newToken) => {
