@@ -2,499 +2,560 @@ import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { 
-  Mic, 
-  Send, 
-  Award, 
-  ChevronDown, 
-  ChevronUp, 
-  Loader2, 
-  ArrowLeft,
-  Briefcase,
-  Layers,
-  Hash,
-  CheckCircle2,
-  AlertCircle,
-  Check,
-  RefreshCw,
-  Code // Added Code icon for visual flair
+	Mic, 
+	Send, 
+	Award, 
+	ChevronDown, 
+	ChevronUp, 
+	Loader2, 
+	ArrowLeft,
+	Briefcase,
+	Layers,
+	Hash,
+	CheckCircle2,
+	Check,
+	RefreshCw,
+	Code 
 } from "lucide-react";
 
 // Define API_URL directly to avoid import errors
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function MockInterview() {
-  const [role, setRole] = useState("");
-  const [difficulty, setDifficulty] = useState("easy");
-  const [questionCount, setQuestionCount] = useState(1);
+	const [role, setRole] = useState("");
+	const [difficulty, setDifficulty] = useState("easy");
+	const [questionCount, setQuestionCount] = useState(1);
 
-  const [questions, setQuestions] = useState([]);
-  const [answers, setAnswers] = useState({});
-  const [parsedEvaluation, setParsedEvaluation] = useState(null);
-  const [score, setScore] = useState(null);
-  const [loading, setLoading] = useState(false);
-  
-  // Track parameters used for the current set of questions
-  const [generatedParams, setGeneratedParams] = useState(null);
+	const [questions, setQuestions] = useState([]);
+	const [answers, setAnswers] = useState({});
+	const [parsedEvaluation, setParsedEvaluation] = useState(null);
+	const [score, setScore] = useState(null);
+	const [loading, setLoading] = useState(false);
+	
+	// Track parameters used for the current set of questions
+	const [generatedParams, setGeneratedParams] = useState(null);
 
-  // --- SCROLL CONTROL ---
-  const [scrollTarget, setScrollTarget] = useState(null); 
+	// --- Custom Dropdown States and Refs ---
+	const [showQCountDropdown, setShowQCountDropdown] = useState(false);
+	const [showDifficultyDropdown, setShowDifficultyDropdown] = useState(false);
 
-  const navigate = useNavigate();
-  const questionsRef = useRef(null); 
-  const resultRef = useRef(null);    
+	const qCountDropdownRef = useRef(null);
+	const difficultyDropdownRef = useRef(null); 
+	// ----------------------------------------
 
-  // Check if inputs have changed from what was generated
-  const isInputDirty = generatedParams && (
-    generatedParams.role !== role || 
-    generatedParams.difficulty !== difficulty || 
-    generatedParams.questionCount !== questionCount
-  );
+	// --- SCROLL CONTROL ---
+	const [scrollTarget, setScrollTarget] = useState(null); 
 
-  // --- UNIFIED SCROLL EFFECT ---
-  useEffect(() => {
-    if (!scrollTarget) return;
+	const navigate = useNavigate();
+	const questionsRef = useRef(null); 
+	const resultRef = useRef(null); 	
 
-    const timer = setTimeout(() => {
-      if (scrollTarget === 'questions' && questionsRef.current) {
-        questionsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-      } else if (scrollTarget === 'results' && resultRef.current) {
-        resultRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-      setScrollTarget(null); 
-    }, 100); 
+	// Check if inputs have changed from what was generated
+	const isInputDirty = generatedParams && (
+		generatedParams.role !== role || 
+		generatedParams.difficulty !== difficulty || 
+		generatedParams.questionCount !== questionCount
+	);
 
-    return () => clearTimeout(timer);
-  }, [scrollTarget, questions, parsedEvaluation]); 
+	// --- UNIFIED SCROLL EFFECT ---
+	useEffect(() => {
+		if (!scrollTarget) return;
 
-  // Clean numbers and quotes from question text
-  const clean = (q) => {
-     let text = q.replace(/^\s*\d+[\).\:-]?\s*/g, "");
-     text = text.replace(/^["'](.*)["']$/, '$1');
-     return text.trim();
-  };
+		const timer = setTimeout(() => {
+			if (scrollTarget === 'questions' && questionsRef.current) {
+				questionsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+			} else if (scrollTarget === 'results' && resultRef.current) {
+				resultRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+			}
+			setScrollTarget(null); 
+		}, 100); 
 
-  // ------------------------------------------
-  // GENERATE QUESTIONS
-  // ------------------------------------------
-  const generateQuestions = async () => {
-    if (!role.trim()) {
-      alert("Please enter a role.");
-      return;
-    }
+		return () => clearTimeout(timer);
+	}, [scrollTarget, questions, parsedEvaluation]); 
 
-    try {
-      setLoading(true);
-      // Reset previous session state
-      setQuestions([]);
-      setAnswers({});
-      setParsedEvaluation(null);
-      setScore(null);
+	// --- CLICK OUTSIDE TO CLOSE DROPDOWNS ---
+	useEffect(() => {
+		function handleClickOutside(event) {
+			if (qCountDropdownRef.current && !qCountDropdownRef.current.contains(event.target)) {
+				setShowQCountDropdown(false);
+			}
+			if (difficultyDropdownRef.current && !difficultyDropdownRef.current.contains(event.target)) {
+				setShowDifficultyDropdown(false);
+			}
+		}
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => document.removeEventListener("mousedown", handleClickOutside);
+	}, []);
+	// ----------------------------------------
 
-      const token = localStorage.getItem("token");
+	// Clean numbers and quotes from question text
+	const clean = (q) => {
+		let text = q.replace(/^\s*\d+[\).\:-]?\s*/g, "");
+		text = text.replace(/^["'](.*)["']$/, '$1');
+		return text.trim();
+	};
 
-      const res = await axios.post(
-        `${API_URL}/interview/generate`,
-        { role, difficulty, questionCount },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+	// ------------------------------------------
+	// GENERATE QUESTIONS
+	// ------------------------------------------
+	const generateQuestions = async () => {
+		if (!role.trim()) {
+			// Using console.error instead of alert per instructions, 
+			// but for UX in a live app, you would use a custom modal/toast.
+			console.error("Please enter a role."); 
+			return;
+		}
 
-      const cleaned = res.data.questions
-        .map((q) => clean(q))
-        .filter((q) => q.length > 2)
-        .slice(0, questionCount);
+		try {
+			setLoading(true);
+			// Reset previous session state
+			setQuestions([]);
+			setAnswers({});
+			setParsedEvaluation(null);
+			setScore(null);
 
-      setQuestions(cleaned);
-      setGeneratedParams({ role, difficulty, questionCount }); // Lock current params
-      
-      setScrollTarget('questions');
+			const token = localStorage.getItem("token");
 
-    } catch (err) {
-      console.error(err);
-      alert("Failed to generate interview questions.");
-    } finally {
-      setLoading(false);
-    }
-  };
+			const res = await axios.post(
+				`${API_URL}/interview/generate`,
+				{ role, difficulty, questionCount },
+				{ headers: { Authorization: `Bearer ${token}` } }
+			);
 
-  // ------------------------------------------
-  // EVALUATE INTERVIEW
-  // ------------------------------------------
-  const evaluateInterview = async () => {
-    if (Object.keys(answers).length !== questions.length) {
-      alert("Please answer all questions before submitting.");
-      return;
-    }
+			const cleaned = res.data.questions
+				.map((q) => clean(q))
+				.filter((q) => q.length > 2)
+				.slice(0, questionCount);
 
-    try {
-      setLoading(true);
-      setScore(null); 
-      setParsedEvaluation(null);
+			setQuestions(cleaned);
+			setGeneratedParams({ role, difficulty, questionCount }); // Lock current params
+			
+			setScrollTarget('questions');
 
-      const token = localStorage.getItem("token");
+		} catch (err) {
+			console.error("Failed to generate interview questions.", err);
+		} finally {
+			setLoading(false);
+		}
+	};
 
-      const res = await axios.post(
-        `${API_URL}/interview/evaluate`,
-        {
-          role,
-          difficulty,
-          questionCount,
-          questions,
-          answers: Object.values(answers),
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+	// ------------------------------------------
+	// EVALUATE INTERVIEW
+	// ------------------------------------------
+	const evaluateInterview = async () => {
+		if (Object.keys(answers).length !== questions.length) {
+			console.error("Please answer all questions before submitting.");
+			return;
+		}
 
-      setScore(res.data.score);
-      const parsed = parseEvaluation(res.data.evaluation);
-      setParsedEvaluation(parsed);
+		try {
+			setLoading(true);
+			setScore(null); 
+			setParsedEvaluation(null);
 
-      setScrollTarget('results');
+			const token = localStorage.getItem("token");
 
-    } catch (err) {
-      console.error(err);
-      alert("Failed to evaluate interview.");
-    } finally {
-      setLoading(false);
-    }
-  };
+			const res = await axios.post(
+				`${API_URL}/interview/evaluate`,
+				{
+					role,
+					difficulty,
+					questionCount,
+					questions,
+					answers: Object.values(answers),
+				},
+				{ headers: { Authorization: `Bearer ${token}` } }
+			);
 
-  // ------------------------------------------
-  // PARSE EVALUATION (Clean Logic)
-  // ------------------------------------------
-  const normalize = (content) => {
-    // Also remove asterisks ** here for cleanliness
-    return content
-      .replace(/\*\*/g, "") 
-      .replace(/```(\w+)?\s*([\s\S]*?)```/g, (_, lang, code) => {
-        const language = lang || "Code";
-        return `\n${language}:\n${code.trim()}\n`;
-      });
-  };
+			setScore(res.data.score);
+			const parsed = parseEvaluation(res.data.evaluation);
+			setParsedEvaluation(parsed);
 
-  const parseEvaluation = (text) => {
-    // Clean up unwanted artifacts
-    let cleanText = text
-      .replace(/={3,}\s*FINAL BLOCK\s*={3,}/gi, "")
-      .replace(/\*\*/g, ""); // Aggressively remove asterisks globally
-    
-    cleanText = cleanText.trim();
+			setScrollTarget('results');
 
-    const parts = cleanText.split(/Q\d+/).slice(1);
+		} catch (err) {
+			console.error("Failed to evaluate interview.", err);
+		} finally {
+			setLoading(false);
+		}
+	};
 
-    const sections = parts.map((block, idx) => {
-      const cleaned = block
-        .replace(/Overall Summary[\s\S]*/i, "") 
-        .replace(/Executive Summary[\s\S]*/i, "")
-        .trim();
+	// ------------------------------------------
+	// PARSE EVALUATION (Clean Logic)
+	// ------------------------------------------
+	const normalize = (content) => {
+		// Also remove asterisks ** here for cleanliness
+		return content
+			.replace(/\*\*/g, "") 
+			.replace(/```(\w+)?\s*([\s\S]*?)```/g, (_, lang, code) => {
+				const language = lang || "Code";
+				return `\n${language}:\n${code.trim()}\n`;
+			});
+	};
 
-      return {
-        title: `Question ${idx + 1}`,
-        content: normalize(cleaned),
-        open: false,
-      };
-    });
+	const parseEvaluation = (text) => {
+		// Clean up unwanted artifacts
+		let cleanText = text
+			.replace(/={3,}\s*FINAL BLOCK\s*={3,}/gi, "")
+			.replace(/\*\*/g, ""); // Aggressively remove asterisks globally
+		
+		cleanText = cleanText.trim();
 
-    const summaryMatch = cleanText.match(/(Overall Summary|Executive Summary)[\s\S]*/i);
-    let summary = summaryMatch ? normalize(summaryMatch[0]) : "Summary unavailable";
-    summary = summary.replace(/^(Overall Summary|Executive Summary)[:\s-]*/i, "").trim();
+		const parts = cleanText.split(/Q\d+/).slice(1);
 
-    return { sections, summary };
-  };
+		const sections = parts.map((block, idx) => {
+			const cleaned = block
+				.replace(/Overall Summary[\s\S]*/i, "") 
+				.replace(/Executive Summary[\s\S]*/i, "")
+				.trim();
 
-  const toggle = (i) => {
-    setParsedEvaluation((prev) => ({
-      ...prev,
-      sections: prev.sections.map((sec, idx) =>
-        idx === i ? { ...sec, open: !sec.open } : sec
-      ),
-    }));
-  };
+			return {
+				title: `Question ${idx + 1}`,
+				content: normalize(cleaned),
+				open: false,
+			};
+		});
 
-  // --- Helper to Render Question Text with Code Support ---
-  // If the text looks like it contains code (indentation or common keywords), 
-  // we try to display it cleanly.
-  const QuestionContent = ({ text }) => {
-    // Detect if text likely contains a code block or technical description
-    // This splits by the 'javascript' keyword or triple backticks if they survived
-    const parts = text.split(/(```[\s\S]*?```)/g);
+		const summaryMatch = cleanText.match(/(Overall Summary|Executive Summary)[\s\S]*/i);
+		let summary = summaryMatch ? normalize(summaryMatch[0]) : "Summary unavailable";
+		summary = summary.replace(/^(Overall Summary|Executive Summary)[:\s-]*/i, "").trim();
 
-    return (
-      <div className="space-y-4">
-        {parts.map((part, idx) => {
-          // If it looks like a code block (wrapped in backticks)
-          if (part.startsWith("```")) {
-            const code = part.replace(/```(\w+)?/g, "").replace(/```/g, "").trim();
-            return (
-              <div key={idx} className="bg-gray-900 rounded-xl p-4 overflow-x-auto border border-gray-800 shadow-sm my-3">
-                <pre className="text-gray-100 font-mono text-sm leading-relaxed whitespace-pre">{code}</pre>
-              </div>
-            );
-          }
-          // Normal text (preserve newlines!)
-          return (
-            <div key={idx} className="whitespace-pre-wrap leading-relaxed text-gray-800 text-lg">
-                {part}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
+		return { sections, summary };
+	};
 
-  // ------------------------------------------
-  // RENDER
-  // ------------------------------------------
-  return (
-    <div className="relative w-full min-h-screen text-[#111827] overflow-hidden pt-36 pb-20 px-4 sm:px-6">
-      
-      {/* Background */}
-      <div className="fixed inset-0 -z-30 bg-gradient-to-br from-[#f7f8ff] via-[#eef0ff] to-[#e7e9ff]" />
-      <div className="fixed top-[-200px] left-1/2 -translate-x-1/2 w-[900px] h-[900px] bg-[radial-gradient(circle,rgba(150,115,255,0.15),transparent_70%)] blur-[120px] -z-20 pointer-events-none"></div>
-      <div className="fixed bottom-0 left-0 w-full h-28 bg-gradient-to-b from-transparent to-[#f7f8ff] pointer-events-none z-10"></div>
+	const toggle = (i) => {
+		setParsedEvaluation((prev) => ({
+			...prev,
+			sections: prev.sections.map((sec, idx) =>
+				idx === i ? { ...sec, open: !sec.open } : sec
+			),
+		}));
+	};
 
-      <div className="max-w-5xl mx-auto relative z-20">
-        
-        {/* HEADER */}
-        <div className="text-center mb-12 animate-in fade-in slide-in-from-top-4 duration-700 max-w-3xl mx-auto">
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-[#34245f] tracking-tight mb-4">
-            AI Mock <span className="bg-gradient-to-r from-fuchsia-500 to-indigo-600 text-transparent bg-clip-text">Interview</span>
-          </h1>
-          <p className="text-lg text-gray-600 leading-relaxed">
-            Practice answering real-world interview questions tailored to your role and get instant AI feedback.
-          </p>
-        </div>
+	// --- Helper to Render Question Text with Code Support ---
+	const QuestionContent = ({ text }) => {
+		const parts = text.split(/(```[\s\S]*?```)/g);
 
-        {/* SETUP CARD */}
-        <div className="max-w-3xl mx-auto bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-white/60 p-8 mb-10 relative transition-all hover:shadow-[0_8px_40px_rgba(0,0,0,0.06)]">
-          
-          <div className="space-y-6">
-            
-            {/* Role Input */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Target Role</label>
-              <div className="relative">
-                <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  placeholder="e.g. Frontend Developer, SDE1, Java Developer"
-                  className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent outline-none transition-all font-medium text-gray-800 placeholder-gray-400 shadow-sm"
-                />
-              </div>
-            </div>
+		return (
+			<div className="space-y-4">
+				{parts.map((part, idx) => {
+					// If it looks like a code block (wrapped in backticks)
+					if (part.startsWith("```")) {
+						const code = part.replace(/```(\w+)?/g, "").replace(/```/g, "").trim();
+						return (
+							<div key={idx} className="bg-gray-900 rounded-xl p-4 overflow-x-auto border border-gray-800 shadow-sm my-3">
+								<pre className="text-gray-100 font-mono text-sm leading-relaxed whitespace-pre">{code}</pre>
+							</div>
+						);
+					}
+					// Normal text (preserve newlines!)
+					return (
+						<div key={idx} className="whitespace-pre-wrap leading-relaxed text-gray-800 text-lg">
+							{part}
+						</div>
+					);
+				})}
+			</div>
+		);
+	};
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Question Count */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Questions</label>
-                <div className="relative">
-                  <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <select
-                    value={questionCount}
-                    onChange={(e) => setQuestionCount(Number(e.target.value))}
-                    className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent outline-none transition-all font-medium text-gray-800 shadow-sm appearance-none cursor-pointer"
-                  >
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <option key={n} value={n}>{n} Question{n > 1 ? 's' : ''}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
-                </div>
-              </div>
+	// ------------------------------------------
+	// RENDER
+	// ------------------------------------------
+	return (
+		<div className="relative w-full min-h-screen text-[#111827] overflow-hidden pt-36 pb-20 px-4 sm:px-6">
+			
+			{/* Background */}
+			<div className="fixed inset-0 -z-30 bg-gradient-to-br from-[#f7f8ff] via-[#eef0ff] to-[#e7e9ff]" />
+			<div className="fixed top-[-200px] left-1/2 -translate-x-1/2 w-[900px] h-[900px] bg-[radial-gradient(circle,rgba(150,115,255,0.15),transparent_70%)] blur-[120px] -z-20 pointer-events-none"></div>
+			<div className="fixed bottom-0 left-0 w-full h-28 bg-gradient-to-b from-transparent to-[#f7f8ff] pointer-events-none z-10"></div>
 
-              {/* Difficulty */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Difficulty</label>
-                <div className="relative">
-                  <Layers className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <select
-                    value={difficulty}
-                    onChange={(e) => setDifficulty(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent outline-none transition-all font-medium text-gray-800 shadow-sm appearance-none cursor-pointer"
-                  >
-                    <option value="easy">Easy</option>
-                    <option value="medium">Medium</option>
-                    <option value="hard">Hard</option>
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
-                </div>
-              </div>
-            </div>
+			<div className="max-w-5xl mx-auto relative z-20">
+				
+				{/* HEADER */}
+				<div className="text-center mb-12 animate-in fade-in slide-in-from-top-4 duration-700 max-w-3xl mx-auto">
+					<h1 className="text-4xl sm:text-5xl font-extrabold text-[#34245f] tracking-tight mb-4">
+						AI Mock <span className="bg-gradient-to-r from-fuchsia-500 to-indigo-600 text-transparent bg-clip-text">Interview</span>
+					</h1>
+					<p className="text-lg text-gray-600 leading-relaxed">
+						Practice answering real-world interview questions tailored to your role and get instant AI feedback.
+					</p>
+				</div>
 
-            {/* GENERATE BUTTON */}
-            <button
-              onClick={generateQuestions}
-              disabled={loading || (questions.length > 0 && !isInputDirty)}
-              className={`
-                w-full py-4 rounded-xl font-bold text-lg shadow-[0_4px_20px_rgba(120,50,255,0.2)] 
-                transition-all duration-300 flex items-center justify-center gap-2
-                ${loading 
-                  ? "bg-gray-400 cursor-not-allowed opacity-70" 
-                  : (questions.length > 0 && !isInputDirty)
-                    ? "bg-gray-100 text-gray-400 border-2 border-gray-200 cursor-not-allowed shadow-none" 
-                    : "bg-gradient-to-r from-fuchsia-500 to-indigo-600 text-white hover:scale-[1.01] hover:shadow-[0_6px_30px_rgba(120,50,255,0.3)]"
-                }
-              `}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="animate-spin w-6 h-6" /> {questions.length > 0 ? "Regenerating..." : "Generating..."}
-                </>
-              ) : (questions.length > 0 && !isInputDirty) ? (
-                <>
-                  <Check className="w-6 h-6" /> Interview Generated
-                </>
-              ) : questions.length > 0 ? (
-                <>
-                  <RefreshCw className="w-5 h-5" /> Regenerate Interview
-                </>
-              ) : (
-                <>
-                  <Mic className="w-5 h-5" /> Start Interview
-                </>
-              )}
-            </button>
-          </div>
-        </div>
+				{/* SETUP CARD */}
+				<div className="max-w-3xl mx-auto bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-white/60 p-8 mb-10 relative transition-all hover:shadow-[0_8px_40px_rgba(0,0,0,0.06)]">
+					
+					<div className="space-y-6">
+						
+						{/* Role Input */}
+						<div>
+							<label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Target Role</label>
+							<div className="relative">
+								<Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+								<input
+									value={role}
+									onChange={(e) => setRole(e.target.value)}
+									placeholder="e.g. Frontend Developer, SDE1, Java Developer"
+									className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent outline-none transition-all font-medium text-gray-800 placeholder-gray-400 shadow-sm"
+								/>
+							</div>
+						</div>
 
-        {/* QUESTIONS SECTION */}
-        {questions.length > 0 && (
-          <div ref={questionsRef} className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 scroll-mt-32">
-            <h3 className="text-2xl font-bold text-center text-gray-800 mb-6">Interview In Progress</h3>
-            
-            {questions.map((q, i) => (
-              <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-all">
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 font-bold text-sm mt-1">
-                    {i + 1}
-                  </div>
-                  
-                  {/* UPDATED: Uses QuestionContent component to handle newlines/code */}
-                  <div className="flex-1">
-                    <QuestionContent text={q} />
-                  </div>
-                </div>
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+							
+							{/* --- QUESTION COUNT (CUSTOM DROPDOWN) --- */}
+							<div className="relative" ref={qCountDropdownRef}>
+								<label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Questions</label>
+								
+								<div 
+									onClick={() => setShowQCountDropdown(prev => !prev)}
+									className={`
+										w-full pl-12 pr-6 py-4 bg-white border rounded-xl cursor-pointer flex items-center justify-between transition-all
+										${showQCountDropdown ? "border-fuchsia-500 ring-2 ring-fuchsia-100" : "border-gray-200 hover:border-fuchsia-300"}
+									`}
+								>
+									<div className="flex items-center gap-3 overflow-hidden">
+										<Hash className="text-gray-400 w-5 h-5 flex-shrink-0" />
+										<span className="text-base font-medium text-gray-900">
+											{questionCount} Question{questionCount > 1 ? 's' : ''}
+										</span>
+									</div>
+									<ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showQCountDropdown ? "rotate-180" : ""}`} />
+								</div>
 
-                <textarea
-                  rows={5}
-                  className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-700 placeholder-gray-400 font-sans mt-2"
-                  placeholder="Type your answer here..."
-                  value={answers[i] || ""}
-                  onChange={(e) => setAnswers({ ...answers, [i]: e.target.value })}
-                />
-              </div>
-            ))}
+								{/* Dropdown List */}
+								{showQCountDropdown && (
+									<div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 max-h-64">
+										<div className="overflow-y-auto">
+											{[1, 2, 3, 4, 5].map((n) => (
+												<div 
+													key={n}
+													onClick={() => { setQuestionCount(n); setShowQCountDropdown(false); }}
+													className="px-5 py-3 hover:bg-fuchsia-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors group text-sm font-medium text-gray-700 flex justify-between items-center"
+												>
+													{n} Question{n > 1 ? 's' : ''}
+													{questionCount === n && <Check className="w-4 h-4 text-fuchsia-600" />}
+												</div>
+											))}
+										</div>
+									</div>
+								)}
+							</div>
 
-            <div className="max-w-3xl mx-auto">
-              <button
-                onClick={evaluateInterview}
-                disabled={loading || parsedEvaluation}
-                className={`
-                  w-full py-4 rounded-xl font-bold text-lg shadow-lg
-                  transition-all duration-300 flex items-center justify-center gap-2
-                  ${loading 
-                    ? "bg-gray-400 cursor-not-allowed" 
-                    : parsedEvaluation
-                      ? "bg-gray-100 text-gray-400 border-2 border-gray-200 cursor-not-allowed shadow-none" 
-                      : "bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:scale-[1.01] hover:shadow-emerald-500/30"
-                  }
-                `}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="animate-spin w-6 h-6" /> Evaluating...
-                  </>
-                ) : parsedEvaluation ? (
-                  <>
-                    <Check className="w-5 h-5" /> Evaluation Complete
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-5 h-5" /> Submit Answers
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
+							{/* --- DIFFICULTY (CUSTOM DROPDOWN) --- */}
+							<div className="relative" ref={difficultyDropdownRef}>
+								<label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Difficulty</label>
+								
+								<div 
+									onClick={() => setShowDifficultyDropdown(prev => !prev)}
+									className={`
+										w-full pl-12 pr-6 py-4 bg-white border rounded-xl cursor-pointer flex items-center justify-between transition-all
+										${showDifficultyDropdown ? "border-fuchsia-500 ring-2 ring-fuchsia-100" : "border-gray-200 hover:border-fuchsia-300"}
+									`}
+								>
+									<div className="flex items-center gap-3 overflow-hidden">
+										<Layers className="text-gray-400 w-5 h-5 flex-shrink-0" />
+										<span className="text-base font-medium text-gray-900 capitalize">
+											{difficulty}
+										</span>
+									</div>
+									<ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showDifficultyDropdown ? "rotate-180" : ""}`} />
+								</div>
 
-        {/* RESULTS SECTION */}
-        {parsedEvaluation && (
-          <div ref={resultRef} className="mt-20 space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 scroll-mt-32">
-            
-            {/* Score Card */}
-            <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-xl border border-white/50 text-center relative overflow-hidden">
-               <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-10 w-64 h-64 bg-fuchsia-100 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
-               
-               <div className="relative z-10">
-                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Overall Performance</h3>
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                     <span className={`text-7xl font-extrabold tracking-tighter ${score >= 70 ? "text-emerald-500" : score >= 40 ? "text-amber-500" : "text-rose-500"}`}>
-                        {score}
-                     </span>
-                     <span className="text-3xl text-gray-400 font-bold self-end mb-2">/100</span>
-                  </div>
-                  <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gray-100 rounded-full text-sm font-semibold text-gray-600">
-                     <Award className="w-4 h-4" /> AI Evaluation
-                  </div>
-               </div>
-            </div>
+								{/* Dropdown List */}
+								{showDifficultyDropdown && (
+									<div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 max-h-64">
+										<div className="overflow-y-auto">
+											{['easy', 'medium', 'hard'].map((d) => (
+												<div 
+													key={d}
+													onClick={() => { setDifficulty(d); setShowDifficultyDropdown(false); }}
+													className="px-5 py-3 hover:bg-fuchsia-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors group text-sm font-medium text-gray-700 flex justify-between items-center capitalize"
+												>
+													{d}
+													{difficulty === d && <Check className="w-4 h-4 text-fuchsia-600" />}
+												</div>
+											))}
+										</div>
+									</div>
+								)}
+							</div>
+							
+						</div>
 
-            {/* Accordion Feedback */}
-            <div className="space-y-4 max-w-4xl mx-auto">
-               <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">Detailed Feedback</h3>
-               
-               {parsedEvaluation.sections.map((sec, i) => (
-                  <div key={i} className="bg-white border border-gray-200 rounded-2xl overflow-hidden transition-all hover:shadow-md">
-                     <button 
-                        onClick={() => toggle(i)}
-                        className="w-full flex items-center justify-between p-6 text-left hover:bg-gray-50 transition-colors"
-                     >
-                        <div className="flex items-center gap-4">
-                           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${sec.open ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500"}`}>
-                              Q{i + 1}
-                           </div>
-                           <span className="font-semibold text-gray-800 text-lg">Question {i + 1} Feedback</span>
-                        </div>
-                        {sec.open ? <ChevronUp className="text-gray-400" /> : <ChevronDown className="text-gray-400" />}
-                     </button>
-                     
-                     {sec.open && (
-                        <div className="p-6 pt-0 bg-gray-50/50 border-t border-gray-100">
-                           <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap leading-relaxed font-sans">
-                              {sec.content}
-                           </div>
-                        </div>
-                     )}
-                  </div>
-               ))}
-            </div>
+						{/* GENERATE BUTTON */}
+						<button
+							onClick={generateQuestions}
+							disabled={loading || (questions.length > 0 && !isInputDirty)}
+							className={`
+								w-full py-4 rounded-xl font-bold text-lg shadow-[0_4px_20px_rgba(120,50,255,0.2)] 
+								transition-all duration-300 flex items-center justify-center gap-2
+								${loading 
+									? "bg-gray-400 cursor-not-allowed opacity-70" 
+									: (questions.length > 0 && !isInputDirty)
+										? "bg-gray-100 text-gray-400 border-2 border-gray-200 cursor-not-allowed shadow-none" 
+										: "bg-gradient-to-r from-fuchsia-500 to-indigo-600 text-white hover:scale-[1.01] hover:shadow-[0_6px_30px_rgba(120,50,255,0.3)]"
+								}
+							`}
+						>
+							{loading ? (
+								<>
+									<Loader2 className="animate-spin w-6 h-6" /> {questions.length > 0 ? "Regenerating..." : "Generating..."}
+								</>
+							) : (questions.length > 0 && !isInputDirty) ? (
+								<>
+									<Check className="w-6 h-6" /> Interview Generated
+								</>
+							) : questions.length > 0 ? (
+								<>
+									<RefreshCw className="w-5 h-5" /> Regenerate Interview
+								</>
+							) : (
+								<>
+									<Mic className="w-5 h-5" /> Start Interview
+								</>
+							)}
+						</button>
+					</div>
+				</div>
 
-            {/* Summary Card */}
-            <div className="bg-gradient-to-br from-indigo-50 to-white p-8 rounded-[2rem] border border-indigo-100 shadow-sm max-w-4xl mx-auto">
-               <h3 className="text-xl font-bold text-indigo-900 mb-4 flex items-center gap-2">
-                  <CheckCircle2 className="w-6 h-6 text-indigo-500" /> Executive Summary
-               </h3>
-               <div className="prose prose-indigo max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {parsedEvaluation.summary}
-               </div>
-            </div>
+				{/* QUESTIONS SECTION */}
+				{questions.length > 0 && (
+					<div ref={questionsRef} className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 scroll-mt-32">
+						<h3 className="text-2xl font-bold text-center text-gray-800 mb-6">Interview In Progress</h3>
+						
+						{questions.map((q, i) => (
+							<div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-all">
+								<div className="flex items-start gap-4 mb-4">
+									<div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 font-bold text-sm mt-1">
+										{i + 1}
+									</div>
+									
+									<div className="flex-1">
+										<QuestionContent text={q} />
+									</div>
+								</div>
 
-          </div>
-        )}
+								<textarea
+									rows={5}
+									className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-700 placeholder-gray-400 font-sans mt-2"
+									placeholder="Type your answer here..."
+									value={answers[i] || ""}
+									onChange={(e) => setAnswers({ ...answers, [i]: e.target.value })}
+								/>
+							</div>
+						))}
 
-        {/* BACK BUTTON */}
-        <div className="mt-20 mb-8 max-w-3xl mx-auto">
-          <button
-            onClick={() =>{ window.scrollTo(0, 0);navigate("/dashboard")}}
-            className="w-full py-4 rounded-xl font-bold text-lg text-white shadow-[0_4px_20px_rgba(120,50,255,0.2)] bg-gradient-to-r from-fuchsia-500 to-indigo-600 hover:scale-[1.01] hover:shadow-[0_6px_30px_rgba(120,50,255,0.3)] transition-all duration-300 flex items-center justify-center gap-2"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Back to Dashboard
-          </button>
-        </div>
+						<div className="max-w-3xl mx-auto">
+							<button
+								onClick={evaluateInterview}
+								disabled={loading || parsedEvaluation}
+								className={`
+									w-full py-4 rounded-xl font-bold text-lg shadow-lg
+									transition-all duration-300 flex items-center justify-center gap-2
+									${loading 
+										? "bg-gray-400 cursor-not-allowed" 
+										: parsedEvaluation
+											? "bg-gray-100 text-gray-400 border-2 border-gray-200 cursor-not-allowed shadow-none" 
+											: "bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:scale-[1.01] hover:shadow-emerald-500/30"
+									}
+								`}
+							>
+								{loading ? (
+									<>
+										<Loader2 className="animate-spin w-6 h-6" /> Evaluating...
+									</>
+								) : parsedEvaluation ? (
+									<>
+										<Check className="w-5 h-5" /> Evaluation Complete
+									</>
+								) : (
+									<>
+										<Send className="w-5 h-5" /> Submit Answers
+									</>
+								)}
+							</button>
+						</div>
+					</div>
+				)}
 
-      </div>
-    </div>
-  );
+				{/* RESULTS SECTION */}
+				{parsedEvaluation && (
+					<div ref={resultRef} className="mt-20 space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 scroll-mt-32">
+						
+						{/* Score Card */}
+						<div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-xl border border-white/50 text-center relative overflow-hidden">
+							 <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-10 w-64 h-64 bg-fuchsia-100 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+							
+							 <div className="relative z-10">
+								 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Overall Performance</h3>
+								 <div className="flex items-center justify-center gap-2 mb-2">
+									 <span className={`text-7xl font-extrabold tracking-tighter ${score >= 70 ? "text-emerald-500" : score >= 40 ? "text-amber-500" : "text-rose-500"}`}>
+										 {score}
+									 </span>
+									 <span className="text-3xl text-gray-400 font-bold self-end mb-2">/100</span>
+								 </div>
+								 <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gray-100 rounded-full text-sm font-semibold text-gray-600">
+									 <Award className="w-4 h-4" /> AI Evaluation
+								 </div>
+							 </div>
+						</div>
+
+						{/* Accordion Feedback */}
+						<div className="space-y-4 max-w-4xl mx-auto">
+							 <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">Detailed Feedback</h3>
+							 
+							 {parsedEvaluation.sections.map((sec, i) => (
+								 <div key={i} className="bg-white border border-gray-200 rounded-2xl overflow-hidden transition-all hover:shadow-md">
+									 <button 
+										 onClick={() => toggle(i)}
+										 className="w-full flex items-center justify-between p-6 text-left hover:bg-gray-50 transition-colors"
+									 >
+										 <div className="flex items-center gap-4">
+											 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${sec.open ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500"}`}>
+												 Q{i + 1}
+											 </div>
+											 <span className="font-semibold text-gray-800 text-lg">Question {i + 1} Feedback</span>
+										 </div>
+										 {sec.open ? <ChevronUp className="text-gray-400" /> : <ChevronDown className="text-gray-400" />}
+									 </button>
+									 
+									 {sec.open && (
+										 <div className="p-6 pt-0 bg-gray-50/50 border-t border-gray-100">
+											 <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap leading-relaxed font-sans">
+												 {sec.content}
+											 </div>
+										 </div>
+									 )}
+								 </div>
+							 ))}
+						</div>
+
+						{/* Summary Card */}
+						<div className="bg-gradient-to-br from-indigo-50 to-white p-8 rounded-[2rem] border border-indigo-100 shadow-sm max-w-4xl mx-auto">
+							 <h3 className="text-xl font-bold text-indigo-900 mb-4 flex items-center gap-2">
+								 <CheckCircle2 className="w-6 h-6 text-indigo-500" /> Executive Summary
+							 </h3>
+							 <div className="prose prose-indigo max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
+								 {parsedEvaluation.summary}
+							 </div>
+						</div>
+
+					</div>
+				)}
+
+				{/* BACK BUTTON */}
+				<div className="mt-20 mb-8 max-w-3xl mx-auto">
+					<button
+						onClick={() =>{ window.scrollTo(0, 0);navigate("/dashboard")}}
+						className="w-full py-4 rounded-xl font-bold text-lg text-white shadow-[0_4px_20px_rgba(120,50,255,0.2)] bg-gradient-to-r from-fuchsia-500 to-indigo-600 hover:scale-[1.01] hover:shadow-[0_6px_30px_rgba(120,50,255,0.3)] transition-all duration-300 flex items-center justify-center gap-2"
+					>
+						<ArrowLeft className="w-5 h-5" />
+						Back to Dashboard
+					</button>
+				</div>
+
+			</div>
+		</div>
+	);
 }
