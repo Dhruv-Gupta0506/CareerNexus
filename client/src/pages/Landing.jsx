@@ -6,15 +6,17 @@ import { useAuth } from "../context/AuthContext";
 export default function Landing() {
   const navigate = useNavigate();
   const { login, token, loading } = useAuth();
+  if (loading) return null;
+  if (token){
+     navigate("/dashboard");
+     return null;
+  }
   const cursorGlowRef = useRef(null);
   
   // ✅ STATE: Track if Google Script is ready
   const [googleReady, setGoogleReady] = useState(false);
 
-  // Auto redirect
-  useEffect(() => {
-    if (!loading && token) navigate("/dashboard");
-  }, [loading, token, navigate]);
+  
 
   // Reveal animations
   useEffect(() => {
