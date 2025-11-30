@@ -2,24 +2,16 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
-const { apiLimiter, aiLimiter } = require("../middleware/rateLimiter"); // Import Rate Limiters
+const { apiLimiter, aiLimiter } = require("../middleware/rateLimiter");
 const { 
   analyzeResume, 
-  getHistory, // Updated name from 'history' to 'getHistory'
-  deleteResume // New delete function
+  getHistory,
+  deleteResume
 } = require("../controllers/resumeController");
 const authMiddleware = require("../middleware/authMiddleware");
 
-// --- Multer Configuration (File Upload) ---
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // Ensure the ./uploads/ folder exists in your project root
-    cb(null, "./uploads/");
-  },
-  filename: (req, file, cb) => {
-    cb(null, "resume-" + Date.now() + path.extname(file.originalname));
-  },
-});
+// --- Multer Configuration (Render-safe: memory storage) ---
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -37,19 +29,12 @@ const upload = multer({
 // --- Routes ---
 
 // 1. Analyze Resume
-// - Protected
-// - AI Rate Limit (20/hour)
-// - File Upload Handling
 router.post("/analyze", authMiddleware, aiLimiter, upload.single("resume"), analyzeResume);
 
 // 2. Get History
-// - Protected
-// - General API Limit (100/15min)
 router.get("/history", authMiddleware, apiLimiter, getHistory);
 
 // 3. Delete History Item
-// - Protected
-// - New feature
 router.delete("/history/:id", authMiddleware, deleteResume);
 
 module.exports = router;
