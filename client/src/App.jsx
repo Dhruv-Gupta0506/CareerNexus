@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 /* Pages */
 import Landing from "./pages/Landing";
@@ -19,118 +19,38 @@ import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
-  const location = useLocation();
-
-  // 🧹 Cleanup: No login/register pages anymore → navbar always visible
-  const hideNavbar = false;
-
   return (
     <>
-      {!hideNavbar && <Navbar />}
+      <Navbar />
 
       <Routes>
-        {/* Landing Page - Public */}
+        {/* Public */}
         <Route path="/" element={<Landing />} />
 
-        {/* PROTECTED ROUTES */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
+        {/* Protected Wrapper */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<Dashboard />} />
 
-        <Route
-          path="/resume"
-          element={
-            <ProtectedRoute>
-              <ResumeAnalyzer />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/history"
-          element={
-            <ProtectedRoute>
-              <ResumeHistory />
-            </ProtectedRoute>
-          }
-        />
+          <Route path="/resume" element={<ResumeAnalyzer />} />
+          <Route path="/history" element={<ResumeHistory />} />
 
-        <Route
-          path="/jd"
-          element={
-            <ProtectedRoute>
-              <JDAnalyzer />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/jd-history"
-          element={
-            <ProtectedRoute>
-              <JDHistory />
-            </ProtectedRoute>
-          }
-        />
+          <Route path="/jd" element={<JDAnalyzer />} />
+          <Route path="/jd-history" element={<JDHistory />} />
 
-        <Route
-          path="/interview"
-          element={
-            <ProtectedRoute>
-              <MockInterview />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/interview-history"
-          element={
-            <ProtectedRoute>
-              <InterviewHistory />
-            </ProtectedRoute>
-          }
-        />
+          <Route path="/interview" element={<MockInterview />} />
+          <Route path="/interview-history" element={<InterviewHistory />} />
 
-        <Route
-          path="/match-engine"
-          element={
-            <ProtectedRoute>
-              <MatchEngine />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/match-history"
-          element={
-            <ProtectedRoute>
-              <MatchHistory />
-            </ProtectedRoute>
-          }
-        />
+          <Route path="/match-engine" element={<MatchEngine />} />
+          <Route path="/match-history" element={<MatchHistory />} />
 
-        <Route
-          path="/tailored-resume"
-          element={
-            <ProtectedRoute>
-              <TailoredResume />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/tailored-history"
-          element={
-            <ProtectedRoute>
-              <TailoredHistory />
-            </ProtectedRoute>
-          }
-        />
+          <Route path="/tailored-resume" element={<TailoredResume />} />
+          <Route path="/tailored-history" element={<TailoredHistory />} />
+        </Route>
 
-        {/* Catch-all redirect */}
-        <Route path="*" element={<Navigate to="/" />} />
+        {/* Catch-all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </>   
+    </>
   );
 }
 
