@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 // Define API_URL directly if not imported from a config
-const API_URL = "http://localhost:5000/api";
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function ResumeHistory() {
   const [history, setHistory] = useState([]);

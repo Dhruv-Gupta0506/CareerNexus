@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 // Define API_URL directly to avoid import errors
-const API_URL = "http://localhost:5000/api";
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function MatchHistory() {
   const [history, setHistory] = useState([]);

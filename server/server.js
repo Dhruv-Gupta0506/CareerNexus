@@ -8,49 +8,70 @@ connectDB();
 
 const app = express();
 
-// -----------------------------------------------------------------------------
-// CORS (Google Popup + Vercel + Local Dev)
-// -----------------------------------------------------------------------------
+/* -----------------------------------------------------------------------------
+   CORS CONFIG — 100% SAFE FOR:
+   - Localhost
+   - Vercel deploy
+   - Vercel preview builds
+   - Google Auth (mobile + web)
+   - Null origins
+ ----------------------------------------------------------------------------- */
+
+const staticAllowed = [
+  "http://localhost:5173",
+  process.env.FRONTEND_URL, // https://zyris.vercel.app
+];
+
+function isAllowed(origin) {
+  // 1. Mobile Google Auth → origin = null
+  if (!origin) return true;
+
+  // 2. Exact allowed origins
+  if (staticAllowed.includes(origin)) return true;
+
+  // 3. Allow ALL *.vercel.app subdomains
+  if (origin.endsWith(".vercel.app")) return true;
+
+  // 4. Allow Google domains (GIS, avatars, fonts)
+  if (
+    origin.includes("google") ||
+    origin.includes("gstatic") ||
+    origin.includes("googleusercontent")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",          // Local Vite frontend
-      process.env.FRONTEND_URL || "",   // Production frontend (Vercel)
-    ],
+    origin: (origin, callback) => {
+      if (isAllowed(origin)) callback(null, true);
+      else callback(new Error(`CORS Blocked: ${origin}`));
+    },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
   })
 );
 
-// JSON parser
 app.use(express.json());
 
-// -----------------------------------------------------------------------------
-// ROUTES
-// -----------------------------------------------------------------------------
+/* -----------------------------------------------------------------------------
+   ROUTES
+ ----------------------------------------------------------------------------- */
 
-// AUTH (Google login + /me)
 app.use("/api/auth", require("./routes/authRoutes"));
-
-// Resume Analyzer
 app.use("/api/resume", require("./routes/resumeRoutes"));
-
-// Job Description Analyzer
 app.use("/api/jd", require("./routes/jdRoutes"));
-
-// Mock Interview
 app.use("/api/interview", require("./routes/interviewRoutes"));
-
-// Job Match Engine
 app.use("/api/match", require("./routes/matchRoutes"));
-
-// Tailored Resume
 app.use("/api/tailor", require("./routes/tailoredRoutes"));
 
-// -----------------------------------------------------------------------------
-// HEALTH CHECKS
-// -----------------------------------------------------------------------------
+/* -----------------------------------------------------------------------------
+   HEALTH CHECK
+ ----------------------------------------------------------------------------- */
 app.get("/", (req, res) => {
   res.json({ message: "Zyris API Running 🚀" });
 });
@@ -59,8 +80,8 @@ app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-// -----------------------------------------------------------------------------
-// START SERVER
-// -----------------------------------------------------------------------------
+/* -----------------------------------------------------------------------------
+   START SERVER
+ ----------------------------------------------------------------------------- */
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

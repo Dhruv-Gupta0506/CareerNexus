@@ -53,8 +53,8 @@ export default function Navbar() {
   useEffect(() => {
     if (!token) return setUser(null);
 
-    fetch("http://localhost:5000/api/auth/me", {
-      headers: { Authorization: token },
+    fetch(`${import.meta.env.VITE_API_URL}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
         if (res.status === 401) {

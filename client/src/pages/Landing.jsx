@@ -76,8 +76,9 @@ export default function Landing() {
 
   const handleGoogleResponse = async (response) => {
     try {
+      const API_URL = import.meta.env.VITE_API_URL;
       const { data } = await axios.post(
-        "http://localhost:5000/api/auth/google",
+        `${API_URL}/auth/google`,
         { credential: response.credential }
       );
 
