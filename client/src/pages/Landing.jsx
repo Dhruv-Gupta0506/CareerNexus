@@ -2,22 +2,24 @@ import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { Loader2 } from "lucide-react"; 
+import LoadingScreen from "../components/LoadingScreen"; // ✅ Import LoadingScreen
 
 export default function Landing() {
   const navigate = useNavigate();
   const { login, token, loading } = useAuth();
-  if (loading) return null;
   
-  if (token){
-     navigate("/dashboard", { replace: true });
-     return null;
-  }
-  const cursorGlowRef = useRef(null);
-  
-  // ✅ STATE: Track if Google Script is ready
+  // ✅ STATE: Track login process to prevent "Landing Page Flash"
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
+  const cursorGlowRef = useRef(null);
 
-  
+  // Redirect if already logged in
+  useEffect(() => {
+    if (token) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [token, navigate]);
 
   // Reveal animations
   useEffect(() => {
@@ -34,69 +36,73 @@ export default function Landing() {
   }, []);
 
   // ============================
-  // GOOGLE LOGIN SETUP (FIXED DELAY)
+  // GOOGLE LOGIN SETUP (ROBUST)
   // ============================
   useEffect(() => {
-    // Function to initialize Google Button
+    const handleGoogleResponse = async (response) => {
+      // 1. IMMEDIATELY show full screen loader to hide Landing Page
+      setIsLoggingIn(true);
+
+      try {
+        const API_URL = import.meta.env.VITE_API_URL;
+        const { data } = await axios.post(
+          `${API_URL}/auth/google`,
+          { credential: response.credential }
+        );
+
+        // 2. Login and Redirect
+        login(data.token);
+        navigate("/dashboard");
+      } catch (err) {
+        console.error("Google login failed:", err);
+        setIsLoggingIn(false); 
+        alert("Login failed. Please try again.");
+      }
+    };
+
     const initGoogle = () => {
       if (!window.google) return;
+      
+      const btnContainer = document.getElementById("googleBtn");
+      if(btnContainer) btnContainer.innerHTML = ""; 
 
       google.accounts.id.initialize({
         client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
         callback: handleGoogleResponse,
         auto_select: false,
+        cancel_on_tap_outside: true,
       });
 
       google.accounts.id.renderButton(
         document.getElementById("googleBtn"),
         {
-          theme: "filled_blue",
+          theme: "outline", 
           size: "large",
-          width: 350,
+          width: 400, 
+          height: 60, 
           type: "standard",
+          text: "signin_with",
           shape: "rectangular",
         }
       );
-      
-      // ✅ Signal that Google is ready
+
       setGoogleReady(true);
     };
 
-    // ✅ CHECK: Is Google loaded?
-    if (window.google) {
-      initGoogle();
-    } else {
-      // If not, check every 100ms until it is (Simple & Robust)
-      const timer = setInterval(() => {
-        if (window.google) {
-          initGoogle();
-          clearInterval(timer);
-        }
-      }, 100);
-      return () => clearInterval(timer);
-    }
-  }, []);
+    const checkGoogle = setInterval(() => {
+      if (window.google) {
+        initGoogle();
+        clearInterval(checkGoogle);
+      }
+    }, 100);
 
-  const handleGoogleResponse = async (response) => {
-    try {
-      const API_URL = import.meta.env.VITE_API_URL;
-      const { data } = await axios.post(
-        `${API_URL}/auth/google`,
-        { credential: response.credential }
-      );
-
-      login(data.token);
-      navigate("/dashboard");
-    } catch (err) {
-      console.error("Google login failed:", err);
-    }
-  };
+    return () => clearInterval(checkGoogle);
+  }, [login, navigate]);
 
   // Mouse glow effect
   useEffect(() => {
     const glow = cursorGlowRef.current;
-    if (!glow) return;
-    if (window.innerWidth < 768) return;
+    if (!glow || window.innerWidth < 768) return;
 
     let x = 0, y = 0;
     let targetX = 0, targetY = 0;
@@ -118,10 +124,16 @@ export default function Landing() {
     return () => window.removeEventListener("mousemove", move);
   }, []);
 
+  // ✅ LOADING SCREEN: REPLACED GENERIC DIV WITH COMPONENT
+  if (loading || isLoggingIn) {
+    return <LoadingScreen fullscreen={true} />;
+  }
+
+  if (token) return null;
+
   return (
     <div className="relative w-full min-h-screen text-[#111827] overflow-hidden">
       
-      {/* Background Elements */}
       <div
         ref={cursorGlowRef}
         className="pointer-events-none fixed top-0 left-0 w-[400px] h-[400px] rounded-full -z-20"
@@ -132,9 +144,7 @@ export default function Landing() {
       ></div>
 
       <div className="absolute inset-0 -z-30 bg-gradient-to-br from-[#f7f8ff] via-[#eef0ff] to-[#e7e9ff]" />
-
       <div className="absolute top-[-200px] left-1/2 -translate-x-1/2 w-[900px] h-[900px] bg-[radial-gradient(circle,rgba(150,115,255,0.18),transparent_70%)] blur-[120px] -z-20"></div>
-
       <div className="absolute bottom-0 left-0 w-full h-28 bg-gradient-to-b from-transparent to-[#f7f8ff] pointer-events-none z-10"></div>
 
       <style>{`
@@ -143,8 +153,6 @@ export default function Landing() {
         .fade-center { opacity: 0; transform: translateY(40px); transition: 0.8s ease-out; }
         .active { opacity: 1 !important; transform: translate(0,0) !important; }
         
-        #googleBtn iframe { margin: 0 !important; display: block !important; } 
-
         .premium-img-wrapper::before {
           content: "";
           position: absolute;
@@ -155,37 +163,18 @@ export default function Landing() {
         }
       `}</style>
 
-      {/* HERO SECTION - MODIFIED FOR BETTER MOBILE SPACING */}
       <section
         id="hero"
-        className="
-          min-h-screen
-          flex flex-col items-center 
-          justify-start sm:justify-center  /* CHANGED: Start on mobile to control height manually */
-          text-center
-          px-4 sm:px-6 fade-center reveal pb-8
-          pt-44 sm:pt-0                    /* CHANGED: Push content down specifically 44 units (~176px) */
-        "
+        className="min-h-screen flex flex-col items-center justify-start sm:justify-center text-center px-4 sm:px-6 fade-center reveal pb-8 pt-44 sm:pt-0"
       >
-        <h1
-          className="
-            hidden sm:block
-            text-[55px] sm:text-[70px] md:text-[85px] lg:text-[95px]
-            font-extrabold leading-[1.05] tracking-tight max-w-5xl
-          "
-        >
+        <h1 className="hidden sm:block text-[55px] sm:text-[70px] md:text-[85px] lg:text-[95px] font-extrabold leading-[1.05] tracking-tight max-w-5xl">
           Career Made <br />
           <span className="bg-gradient-to-r from-fuchsia-500 to-indigo-600 text-transparent bg-clip-text drop-shadow-md">
             Simple
           </span>
         </h1>
 
-        <h1
-          className="
-            sm:hidden block
-            text-[80px] font-extrabold leading-[1.1] tracking-tight
-          "
-        >
+        <h1 className="sm:hidden block text-[80px] font-extrabold leading-[1.1] tracking-tight">
           Career<br />Made<br />
           <span className="bg-gradient-to-r from-fuchsia-500 to-indigo-600 text-transparent bg-clip-text drop-shadow-md">
             Simple
@@ -196,61 +185,50 @@ export default function Landing() {
           Smarter Career Decisions, Powered by AI.
         </p>
 
-        {/* ========================================================= */}
-        {/* BUTTON WRAPPER */}
-        {/* ========================================================= */}
-        <div className="relative mt-10 inline-block group">
+        <div className="relative mt-10 w-fit h-fit group mx-auto">
           
-          {/* VISUAL BUTTON (Changes text if loading) */}
-          <button
+          <div
             className={`
-              pointer-events-none
+              relative z-0
+              flex items-center justify-center
               px-8 sm:px-10 py-3.5
               bg-gradient-to-r from-fuchsia-500 to-indigo-600
               text-white rounded-lg 
               text-base sm:text-lg font-semibold
               shadow-[0_4px_25px_rgba(120,50,255,0.25)]
               transition-all duration-300
-              
-              /* Only glow/scale if loaded */
-              ${googleReady ? 'group-hover:shadow-[0_6px_30px_rgba(120,50,255,0.35)] group-hover:scale-[1.045]' : 'opacity-80'}
+              ${googleReady ? 'group-hover:shadow-[0_6px_30px_rgba(120,50,255,0.35)] group-hover:scale-[1.045]' : 'opacity-80 cursor-not-allowed'}
             `}
           >
-            {/* ✅ SHOW LOADING UNTIL GOOGLE SCRIPT ARRIVES */}
-            {googleReady ? "Try Zyris" : "Loading..."}
-          </button>
+            {googleReady ? (
+              "Try Zyris"
+            ) : (
+              <span className="flex items-center gap-2">
+                 <Loader2 className="w-5 h-5 animate-spin" /> Loading...
+              </span>
+            )}
+          </div>
 
-          {/* REAL GOOGLE BUTTON (Invisible Overlay) */}
           <div 
             id="googleBtn"
-            className="absolute inset-0 z-10 opacity-0 overflow-hidden flex justify-center items-center cursor-pointer"
+            className="absolute top-0 left-0 w-full h-full z-20 opacity-0 overflow-hidden cursor-pointer"
+            style={{ transform: "scale(1.1)" }} 
           ></div>
 
         </div>
 
       </section>
 
-      {/* ✅ SCROLL ANCHOR */}
       <div id="features" className="scroll-mt-32"></div>
 
-      {/* MOBILE Why Choose */}
       <h2 className="sm:hidden text-3xl text-center font-bold text-[#2b2055] mt-24 mb-8">
         Why Choose Zyris?
       </h2>
 
-      {/* DESKTOP Why Choose */}
-      <h2
-        className="
-          hidden sm:block 
-          text-4xl md:text-5xl font-bold text-center mt-10 mb-10 
-          text-[#34245f]
-          fade-center reveal
-        "
-      >
+      <h2 className="hidden sm:block text-4xl md:text-5xl font-bold text-center mt-10 mb-10 text-[#34245f] fade-center reveal">
         Why Choose Zyris?
       </h2>
 
-      {/* FEATURE COMPONENTS */}
       <PremiumSection
         title="Smarter Resume Insights"
         subtitle="📄 AI Resume Analyzer"
@@ -312,7 +290,6 @@ export default function Landing() {
   );
 }
 
-/* FEATURE SECTION */
 function PremiumSection({ title, subtitle, desc, img, reverse }) {
   return (
     <section className="px-4 sm:px-6 py-20 sm:py-24">
@@ -349,7 +326,6 @@ function PremiumSection({ title, subtitle, desc, img, reverse }) {
   );
 }
 
-/* FAQ */
 function FAQ({ q, a }) {
   return (
     <details

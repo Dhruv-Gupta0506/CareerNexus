@@ -9,9 +9,10 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Load token instantly on app start
     const savedToken = localStorage.getItem("token");
-
-    setToken(savedToken || null);
-    setLoading(false); // stop loading immediately
+    if (savedToken) {
+        setToken(savedToken);
+    }
+    setLoading(false); // stop loading immediately after check
   }, []);
 
   const login = (newToken) => {
@@ -22,6 +23,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem("token");
     setToken(null);
+    // Use window.location to ensure a full clean state reset
     window.location.href = "/";
   };
 

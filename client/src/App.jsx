@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
 
 /* Pages */
 import Landing from "./pages/Landing";
@@ -19,13 +20,18 @@ import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
+  const { token } = useAuth();
+
   return (
     <>
       <Navbar />
 
       <Routes>
-        {/* Public */}
-        <Route path="/" element={<Landing />} />
+        {/* Public - Redirects to Dashboard if logged in */}
+        <Route 
+          path="/" 
+          element={token ? <Navigate to="/dashboard" replace /> : <Landing />} 
+        />
 
         {/* Protected Wrapper */}
         <Route element={<ProtectedRoute />}>

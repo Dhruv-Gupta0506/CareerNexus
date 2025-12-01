@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import LoadingScreen from "../components/LoadingScreen";
 import {
   FileText,
   Target,
@@ -144,11 +145,7 @@ export default function Dashboard() {
       .finally(() => setLoading(false)); // Ensure loading stops
   }, [token]);
   if (authLoading || loading) {
-    return (
-      <div className="w-full h-screen flex items-center justify-center text-gray-600">
-        <p>Loading...</p>
-      </div>
-    );
+    return (<LoadingScreen fullscreen={true} />);
   }
 
   const features = [
