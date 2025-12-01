@@ -159,14 +159,14 @@ export default function Navbar() {
                             />
                         )}
                         <span
-                            className={`
+                            className="
                                 text-[28px] sm:text-[32px] font-extrabold tracking-tight
                                 bg-gradient-to-r from-indigo-600 to-purple-600
                                 bg-clip-text text-transparent
                                 group-hover:brightness-110
+                                group-hover:scale-[1.05] origin-left
                                 transition-all duration-300
-                                ${token ? "group-hover:scale-[1.1] origin-left" : ""} 
-                            `}
+                            "
                         >
                             Zyris
                         </span>
@@ -211,19 +211,23 @@ export default function Navbar() {
                                             Tools <ChevronDown className={`w-5 h-5 transition-transform ${activeDropdown === "tools" ? "rotate-180" : ""}`} />
                                         </button>
 
+                                        {/* Dropdown Container */}
                                         {activeDropdown === "tools" && (
-                                            <div className="absolute top-full right-0 mt-4 w-72 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                                                <div className="py-1">
-                                                    {toolsMenu.map((item) => (
-                                                        <div
-                                                            key={item.path}
-                                                            onClick={() => handleNavigation(item.path)}
-                                                            className="flex items-center gap-3 px-5 py-3 hover:bg-indigo-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors group"
-                                                        >
-                                                            <item.icon className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
-                                                            <span className="font-bold text-gray-700 text-sm group-hover:text-indigo-700">{item.name}</span>
-                                                        </div>
-                                                    ))}
+                                            /* ✅ FIX: Changed mt-4 to pt-4 to bridge the gap so mouse doesn't "leave" */
+                                            <div className="absolute top-full right-0 pt-4 w-72 animate-in fade-in slide-in-from-top-2">
+                                                <div className="bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
+                                                    <div className="py-1">
+                                                        {toolsMenu.map((item) => (
+                                                            <div
+                                                                key={item.path}
+                                                                onClick={() => handleNavigation(item.path)}
+                                                                className="flex items-center gap-3 px-5 py-3 hover:bg-indigo-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors group"
+                                                            >
+                                                                <item.icon className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
+                                                                <span className="font-bold text-gray-700 text-sm group-hover:text-indigo-700">{item.name}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
@@ -244,19 +248,23 @@ export default function Navbar() {
                                             History <ChevronDown className={`w-5 h-5 transition-transform ${activeDropdown === "history" ? "rotate-180" : ""}`} />
                                         </button>
 
+                                        {/* Dropdown Container */}
                                         {activeDropdown === "history" && (
-                                            <div className="absolute top-full right-0 mt-4 w-72 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                                                <div className="py-1">
-                                                    {historyMenu.map((item) => (
-                                                        <div
-                                                            key={item.path}
-                                                            onClick={() => handleNavigation(item.path)}
-                                                            className="flex items-center gap-3 px-5 py-3 hover:bg-fuchsia-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors group"
-                                                        >
-                                                            <item.icon className="w-5 h-5 text-gray-400 group-hover:text-fuchsia-600 transition-colors" />
-                                                            <span className="font-bold text-gray-700 text-sm group-hover:text-fuchsia-700">{item.name}</span>
-                                                        </div>
-                                                    ))}
+                                            /* ✅ FIX: Changed mt-4 to pt-4 to bridge the gap */
+                                            <div className="absolute top-full right-0 pt-4 w-72 animate-in fade-in slide-in-from-top-2">
+                                                <div className="bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
+                                                    <div className="py-1">
+                                                        {historyMenu.map((item) => (
+                                                            <div
+                                                                key={item.path}
+                                                                onClick={() => handleNavigation(item.path)}
+                                                                className="flex items-center gap-3 px-5 py-3 hover:bg-fuchsia-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors group"
+                                                            >
+                                                                <item.icon className="w-5 h-5 text-gray-400 group-hover:text-fuchsia-600 transition-colors" />
+                                                                <span className="font-bold text-gray-700 text-sm group-hover:text-fuchsia-700">{item.name}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
@@ -304,15 +312,15 @@ export default function Navbar() {
 
                     {/* 3. MOBILE MENU BUTTON */}
                     {token && (
-            <div className="lg:hidden z-50">
-              <button 
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="p-2 text-gray-600 hover:text-indigo-600 transition-colors"
-              >
-                {isMobileMenuOpen ? <X className="w-8 h-8" /> : <Menu className="w-8 h-8" />}
-              </button>
-            </div>
-          )}
+                        <div className="lg:hidden z-50">
+                            <button 
+                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                                className="p-2 text-gray-600 hover:text-indigo-600 transition-colors"
+                            >
+                                {isMobileMenuOpen ? <X className="w-8 h-8" /> : <Menu className="w-8 h-8" />}
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* 4. MOBILE DROPDOWN OVERLAY */}
